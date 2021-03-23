@@ -56,11 +56,28 @@ class Encoder(HelperModule):
         return self.layers(x)
 
 class Decoder(HelperModule):
-    def build(self):
-        pass
+    def build(self, 
+            in_channels: int, hidden_channels: int, out_channels: int,
+            res_channels: int, nb_res_layers: int,
+            upscale_factor: int,
+        ):
+        assert log2(upscale_factor) % 1 == 0, "Downscale must be a power of 2"
+        upscale_steps = int(log2(upscale_factor))
+        layers = [nn.Conv2d(in_channels, hidden_channels, 3, stride=1, padding=1)]
+        layers.append(ResidualStack(hidden_channels, res_channels, nb_res_layers))
+        c_channel, n_channel = hidden_channels, hidden_channels // 2
+        for _ in range(upscale_steps):
+            layers.append(nn.Sequential(
+                nn.ConvTranspose2d(c_channel, n_channel, 4, stride=2, padding=1),
+                nn.ReLU(),
+            ))
+            c_channel, n_channel = n_channel, out_channels
+        layers.append(nn.Conv2d(c_channel, n_channel, 3, stride=1, padding=1))
+
+        self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
-        pass
+        return self.layers(x)
 
 class VQLayer(HelperModule):
     def build(self):
@@ -92,7 +109,14 @@ class VQVAE(HelperModule):
         return x
 
 if __name__ == '__main__':
-    net = Encoder(3, 64, 32, 2, 4)
-    x = torch.randn(1,3,32,32)
-    y = net(x)
-    print(y.shape)
+    for sf in [2,4,8,16]:
+        encoder = Encoder(3, 64, 32, 2, sf)
+        decoder = Decoder(64, 32, 3, 32, 2, sf)
+        x = torch.randn(1,3,32,32)
+        y = encoder(x)
+        print(y.shape)
+
+        x = decoder(y)
+        print(x.shape)
+
+        print()
