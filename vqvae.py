@@ -85,6 +85,8 @@ class Decoder(HelperModule):
 
     Essentially handles the "discrete" part of the network, and training through EMA rather than 
     third term in loss function.
+
+    TODO: Merge input conv layer into this CodeLayer
 """
 class CodeLayer(HelperModule):
     def build(self, embed_dim: int, nb_entries: int):
@@ -93,9 +95,9 @@ class CodeLayer(HelperModule):
         self.decay = 0.99
         self.eps = 1e-5
 
-        embed = torch.randn(dim, n_embed)
+        embed = torch.randn(embed_dim, nb_entries)
         self.register_buffer("embed", embed)
-        self.register_buffer("cluster_size", torch.zeros(n_embed))
+        self.register_buffer("cluster_size", torch.zeros(nb_entries))
         self.register_buffer("embed_avg", embed.clone())
 
     def forward(self, x):
@@ -114,6 +116,7 @@ class CodeLayer(HelperModule):
             embed_onehot_sum = embed_onehot.sum(0)
             embed_sum = flatten.transpose(0, 1) @ embed_onehot
 
+            # TODO: Replace this? Or can we simply comment out?
             # dist_fn.all_reduce(embed_onehot_sum)
             # dist_fn.all_reduce(embed_sum)
 
@@ -136,40 +139,36 @@ class CodeLayer(HelperModule):
     def embed_code(self, embed_id):
         return F.embedding(embed_id, self.embed.transpose(0, 1))
 
-class VQVAELevel(HelperModule):
-    def build(self):
-        pass
+"""
+    Main VQ-VAE-2 Module, capable of support arbitrary number of levels
 
-    def forward(self, x):
-        pass
-
+    TODO: Add forward function
+    TODO: Cascade latent codes down correctly. Current channel counts are incorrect
+"""
 class VQVAE(HelperModule):
     def build(self,
-            in_channels: int        = 3,
-            hidden_channels: int    = 128,
-            res_channels: int       = 32,
-            nb_res_layers: int      = 2,
-            nb_levels: int          = 2,
-            embed_dim: int          = 64,
-            nb_entries: int         = 512,
+            in_channels: int                = 3,
+            hidden_channels: int            = 128,
+            res_channels: int               = 32,
+            nb_res_layers: int              = 2,
+            nb_levels: int                  = 2,
+            embed_dim: int                  = 64,
+            nb_entries: int                 = 512,
+            scaling_rates: list[int]        = [4, 2]
         ):
-        pass
+        self.nb_levels = nb_levels
+        assert len(scaling_rates) == nb_levels, "Number of scaling rates not equal to number of levels!"
+
+        self.encoders = nn.ModuleList([Encoder(in_channels, hidden_channels, res_channels, nb_res_layers, scaling_rates[0])])
+        self.decoders = nn.ModuleList([Decoder(hidden_channels, hidden_channels, in_channels, res_channels, nb_res_layers, scaling_rates[0])])
+        for sr in scaling_rates[1:]:
+            self.encoders.append(Encoder(hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
+            self.decoders.append(Decoder(hidden_channels, hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
+
+        self.codebooks = nn.ModuleList([CodeLayer(embed_dim, nb_entries)])
 
     def forward(self, x):
         return x
 
 if __name__ == '__main__':
-    for sf in [2,4,8,16]:
-        encoder = Encoder(3, 64, 32, 2, sf)
-        decoder = Decoder(64, 32, 3, 32, 2, sf)
-        quantize = CodeLayer(64, 128)
-        x = torch.randn(1,3,32,32)
-        y = encoder(x)
-        q = quantize(y.permute(0,2,3,1))[0].permute(0,3,1,2)
-        print(y.shape)
-        print(q.shape)
-
-        x = decoder(y)
-        print(x.shape)
-
-        print()
+    net = VQVAE()
