@@ -79,12 +79,62 @@ class Decoder(HelperModule):
     def forward(self, x):
         return self.layers(x)
 
-class VQLayer(HelperModule):
-    def build(self):
-        pass
+"""
+    Almost directly taken from https://github.com/rosinality/vq-vae-2-pytorch/blob/master/vqvae.py
+    No reason to reinvent this rather complex mechanism.
+
+    Essentially handles the "discrete" part of the network, and training through EMA rather than 
+    third term in loss function.
+"""
+class CodeLayer(HelperModule):
+    def build(self, embed_dim: int, nb_entries: int):
+        self.dim = embed_dim
+        self.n_embed = nb_entries
+        self.decay = 0.99
+        self.eps = 1e-5
+
+        embed = torch.randn(dim, n_embed)
+        self.register_buffer("embed", embed)
+        self.register_buffer("cluster_size", torch.zeros(n_embed))
+        self.register_buffer("embed_avg", embed.clone())
 
     def forward(self, x):
-        pass
+        flatten = x.reshape(-1, self.dim)
+        dist = (
+            flatten.pow(2).sum(1, keepdim=True)
+            - 2 * flatten @ self.embed
+            + self.embed.pow(2).sum(0, keepdim=True)
+        )
+        _, embed_ind = (-dist).max(1)
+        embed_onehot = F.one_hot(embed_ind, self.n_embed).type(flatten.dtype)
+        embed_ind = embed_ind.view(*x.shape[:-1])
+        quantize = self.embed_code(embed_ind)
+
+        if self.training:
+            embed_onehot_sum = embed_onehot.sum(0)
+            embed_sum = flatten.transpose(0, 1) @ embed_onehot
+
+            # dist_fn.all_reduce(embed_onehot_sum)
+            # dist_fn.all_reduce(embed_sum)
+
+            self.cluster_size.data.mul_(self.decay).add_(
+                embed_onehot_sum, alpha=1 - self.decay
+            )
+            self.embed_avg.data.mul_(self.decay).add_(embed_sum, alpha=1 - self.decay)
+            n = self.cluster_size.sum()
+            cluster_size = (
+                (self.cluster_size + self.eps) / (n + self.n_embed * self.eps) * n
+            )
+            embed_normalized = self.embed_avg / cluster_size.unsqueeze(0)
+            self.embed.data.copy_(embed_normalized)
+
+        diff = (quantize.detach() - x).pow(2).mean()
+        quantize = x + (quantize - x).detach()
+
+        return quantize, diff, embed_ind
+
+    def embed_code(self, embed_id):
+        return F.embedding(embed_id, self.embed.transpose(0, 1))
 
 class VQVAELevel(HelperModule):
     def build(self):
@@ -112,9 +162,12 @@ if __name__ == '__main__':
     for sf in [2,4,8,16]:
         encoder = Encoder(3, 64, 32, 2, sf)
         decoder = Decoder(64, 32, 3, 32, 2, sf)
+        quantize = CodeLayer(64, 128)
         x = torch.randn(1,3,32,32)
         y = encoder(x)
+        q = quantize(y.permute(0,2,3,1))[0].permute(0,3,1,2)
         print(y.shape)
+        print(q.shape)
 
         x = decoder(y)
         print(x.shape)
