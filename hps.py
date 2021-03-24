@@ -9,7 +9,7 @@ HPS = {
         'nb_levels':                3,
         'embed_dim':                64,
         'nb_entries':               512,
-        'scaling_rates':            [4, 4, 2],
+        'scaling_rates':            [8, 2, 2],
 
         'learning_rate':            1e-4,
         'beta':                     0.25,

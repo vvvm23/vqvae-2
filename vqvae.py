@@ -144,6 +144,7 @@ class CodeLayer(HelperModule):
 
     TODO: Add forward function
     TODO: Cascade latent codes down correctly. Current channel counts are incorrect
+    TODO: Some elegant way of upscaling latent codes, previous way is quite messy
 """
 class VQVAE(HelperModule):
     def build(self,
