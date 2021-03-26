@@ -85,11 +85,11 @@ class Decoder(HelperModule):
 
     Essentially handles the "discrete" part of the network, and training through EMA rather than 
     third term in loss function.
-
-    TODO: Merge input conv layer into this CodeLayer
 """
 class CodeLayer(HelperModule):
-    def build(self, embed_dim: int, nb_entries: int):
+    def build(self, in_channels: int, embed_dim: int, nb_entries: int):
+        self.conv_in = nn.Conv2d(in_channels, embed_dim, 1)
+
         self.dim = embed_dim
         self.n_embed = nb_entries
         self.decay = 0.99
@@ -101,6 +101,7 @@ class CodeLayer(HelperModule):
         self.register_buffer("embed_avg", embed.clone())
 
     def forward(self, x):
+        x = self.conv_in(x)
         flatten = x.reshape(-1, self.dim)
         dist = (
             flatten.pow(2).sum(1, keepdim=True)
@@ -162,14 +163,16 @@ class VQVAE(HelperModule):
 
         self.encoders = nn.ModuleList([Encoder(in_channels, hidden_channels, res_channels, nb_res_layers, scaling_rates[0])])
         self.decoders = nn.ModuleList([Decoder(hidden_channels, hidden_channels, in_channels, res_channels, nb_res_layers, scaling_rates[0])])
-        for sr in scaling_rates[1:]:
+        self.codebooks = nn.ModuleList([CodeLayer(hidden_channels, embed_dim, nb_entries)])
+        for i, sr in enumerate(scaling_rates[1:]):
             self.encoders.append(Encoder(hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
-            self.decoders.append(Decoder(hidden_channels, hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
-
-        self.codebooks = nn.ModuleList([CodeLayer(embed_dim, nb_entries)])
+            self.decoders.append(Decoder(hidden_channels*(i+2), hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
+            self.codebooks.append(CodeLayer(hidden_channels + embed_dim*(i+1), embed_dim, nb_entries))
 
     def forward(self, x):
         return x
 
 if __name__ == '__main__':
+    from helper import get_parameter_count
     net = VQVAE()
+    print(f"Number of trainable parameters: {get_parameter_count(net)}")
