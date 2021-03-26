@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from math import log2
+from typing import Tuple
 
 from helper import HelperModule
 
@@ -19,7 +20,7 @@ class ReZero(HelperModule):
         )
         self.alpha = nn.Parameter(torch.tensor(0.0))
 
-    def forward(self, x):
+    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         return self.layers(x) * self.alpha + x
 
 class ResidualStack(HelperModule):
@@ -28,7 +29,7 @@ class ResidualStack(HelperModule):
                         for _ in range(nb_layers)
                     ])
 
-    def forward(self, x):
+    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         return self.stack(x)
 
 class Encoder(HelperModule):
@@ -52,7 +53,7 @@ class Encoder(HelperModule):
 
         self.layers = nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         return self.layers(x)
 
 class Decoder(HelperModule):
@@ -76,7 +77,7 @@ class Decoder(HelperModule):
 
         self.layers = nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         return self.layers(x)
 
 """
@@ -100,7 +101,7 @@ class CodeLayer(HelperModule):
         self.register_buffer("cluster_size", torch.zeros(nb_entries))
         self.register_buffer("embed_avg", embed.clone())
 
-    def forward(self, x):
+    def forward(self, x: torch.FloatTensor) -> Tuple[torch.FloatTensor, float, torch.LongTensor]:
         x = self.conv_in(x)
         flatten = x.reshape(-1, self.dim)
         dist = (
@@ -137,7 +138,7 @@ class CodeLayer(HelperModule):
 
         return quantize, diff, embed_ind
 
-    def embed_code(self, embed_id):
+    def embed_code(self, embed_id: torch.LongTensor) -> torch.FloatTensor:
         return F.embedding(embed_id, self.embed.transpose(0, 1))
 
 class Upscaler(HelperModule):
@@ -155,7 +156,7 @@ class Upscaler(HelperModule):
                 layers.append(nn.ReLU())
             self.stages.append(nn.Sequential(*layers))
 
-    def forward(self, x: torch.FloatTensor, stage: int):
+    def forward(self, x: torch.FloatTensor, stage: int) -> torch.FloatTensor:
         return self.stages[stage](x)
 
 """
