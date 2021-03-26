@@ -140,11 +140,28 @@ class CodeLayer(HelperModule):
     def embed_code(self, embed_id):
         return F.embedding(embed_id, self.embed.transpose(0, 1))
 
+class Upscaler(HelperModule):
+    def build(self,
+            embed_dim: int,
+            scaling_rates: list[int],
+        ):
+
+        self.stages = nn.ModuleList()
+        for sr in scaling_rates:
+            upscale_steps = int(log2(sr))
+            layers = []
+            for _ in range(upscale_steps):
+                layers.append(nn.ConvTranspose2d(embed_dim, embed_dim, 4, stride=2, padding=1))
+                layers.append(nn.ReLU())
+            self.stages.append(nn.Sequential(*layers))
+
+    def forward(self, x: torch.FloatTensor, stage: int):
+        return self.stages[stage](x)
+
 """
     Main VQ-VAE-2 Module, capable of support arbitrary number of levels
 
     TODO: Add forward function
-    TODO: Cascade latent codes down correctly. Current channel counts are incorrect
     TODO: Some elegant way of upscaling latent codes, previous way is quite messy
 """
 class VQVAE(HelperModule):
