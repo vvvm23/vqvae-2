@@ -171,10 +171,10 @@ class VQVAE(HelperModule):
             hidden_channels: int            = 128,
             res_channels: int               = 32,
             nb_res_layers: int              = 2,
-            nb_levels: int                  = 2,
+            nb_levels: int                  = 3,
             embed_dim: int                  = 64,
             nb_entries: int                 = 512,
-            scaling_rates: list[int]        = [4, 2]
+            scaling_rates: list[int]        = [8, 4, 2]
         ):
         self.nb_levels = nb_levels
         assert len(scaling_rates) == nb_levels, "Number of scaling rates not equal to number of levels!"
@@ -186,6 +186,11 @@ class VQVAE(HelperModule):
             self.encoders.append(Encoder(hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
             self.decoders.append(Decoder(hidden_channels*(i+2), hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
             self.codebooks.append(CodeLayer(hidden_channels + embed_dim*(i+1), embed_dim, nb_entries))
+
+        self.upscalers = nn.ModuleList()
+        for i in range(nb_levels - 1):
+            self.upscalers.append(Upscaler(embed_dim, scaling_rates[1:len(scaling_rates) - i]))
+        print(self.upscalers)
 
     def forward(self, x):
         return x
