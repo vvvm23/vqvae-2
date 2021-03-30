@@ -1,6 +1,10 @@
 import torch
 import torchvision
+from torchvision.utils import save_image
 
+import matplotlib.pyplot as plt
+
+from vqvae import VQVAE
 from hps import HPS
 from helper import NoLabelImageFolder
 
@@ -19,4 +23,14 @@ def get_dataset(task: str, batch_size: int):
 if __name__ == '__main__':
     print("Loading FFHQ1024 dataset")
     dataset, loader = get_dataset('ffhq1024', 1)
-    print(dataset.__getitem__(0))
+    device = torch.device('cuda')
+    net = VQVAE(nb_levels=3, scaling_rates=[2]*3).to(device)
+
+    image = dataset.__getitem__(123).to(device).unsqueeze(0)
+    y = net(image)[-1][-1]
+
+    fig, axs = plt.subplots(2)
+    axs[0].imshow(image.squeeze().detach().cpu().permute(1, 2, 0))
+    axs[1].imshow(y.squeeze().detach().cpu().permute(1, 2, 0))
+    print(y)
+    plt.show()
