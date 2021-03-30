@@ -180,22 +180,35 @@ class VQVAE(HelperModule):
         assert len(scaling_rates) == nb_levels, "Number of scaling rates not equal to number of levels!"
 
         self.encoders = nn.ModuleList([Encoder(in_channels, hidden_channels, res_channels, nb_res_layers, scaling_rates[0])])
-        self.decoders = nn.ModuleList([Decoder(hidden_channels, hidden_channels, in_channels, res_channels, nb_res_layers, scaling_rates[0])])
-        self.codebooks = nn.ModuleList([CodeLayer(hidden_channels, embed_dim, nb_entries)])
         for i, sr in enumerate(scaling_rates[1:]):
             self.encoders.append(Encoder(hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
-            self.decoders.append(Decoder(hidden_channels*(i+2), hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
-            self.codebooks.append(CodeLayer(hidden_channels + embed_dim*(i+1), embed_dim, nb_entries))
+
+        self.codebooks = nn.ModuleList([CodeLayer(hidden_channels+embed_dim*(nb_levels-1), embed_dim, nb_entries)])
+        for i in range(nb_levels - 1):
+            self.codebooks.append(CodeLayer(hidden_channels+embed_dim*(nb_levels-1-i), embed_dim, nb_entries))
+
+        self.decoders = nn.ModuleList([Decoder(embed_dim*nb_levels, hidden_channels, in_channels, res_channels, nb_res_layers, scaling_rates[0])])
+        for i, sr in enumerate(scaling_rates[1:]):
+            self.decoders.append(Decoder(embed_dim*(nb_levels-1-i), hidden_channels, embed_dim, res_channels, nb_res_layers, sr))
 
         self.upscalers = nn.ModuleList()
         for i in range(nb_levels - 1):
             self.upscalers.append(Upscaler(embed_dim, scaling_rates[1:len(scaling_rates) - i]))
-        print(self.upscalers)
 
     def forward(self, x):
-        return x
+        encoder_outputs = [x]
+        code_outputs = []
+
+        for enc in self.encoders:
+            encoder_outputs.append(enc(encoder_outputs[-1]))
+
+        return encoder_outputs
 
 if __name__ == '__main__':
     from helper import get_parameter_count
     net = VQVAE()
     print(f"Number of trainable parameters: {get_parameter_count(net)}")
+
+    x = torch.randn(8, 3, 128, 128)
+    ys = net(x)
+    print('\n'.join(str(y.shape) for y in ys))
