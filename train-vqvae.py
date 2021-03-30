@@ -3,6 +3,7 @@ import torchvision
 from torchvision.utils import save_image
 
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 from vqvae import VQVAE
 from hps import HPS
@@ -22,15 +23,23 @@ def get_dataset(task: str, batch_size: int):
 
 if __name__ == '__main__':
     print("Loading FFHQ1024 dataset")
-    dataset, loader = get_dataset('ffhq1024', 1)
+    dataset, loader = get_dataset('ffhq1024', 8)
     device = torch.device('cuda')
-    net = VQVAE(nb_levels=3, scaling_rates=[2]*3).to(device)
+    net = VQVAE().to(device)
+    crit = torch.nn.MSELoss()
+    optim = torch.optim.Adam(net.parameters())
 
-    image = dataset.__getitem__(123).to(device).unsqueeze(0)
-    y = net(image)[-1][-1]
+    for eid in range(100):
+        epoch_loss = 0.
+        for x in tqdm(loader):
+            optim.zero_grad()
+            x = x.to(device)
+            y, d, _, _ = net(x)
 
-    fig, axs = plt.subplots(2)
-    axs[0].imshow(image.squeeze().detach().cpu().permute(1, 2, 0))
-    axs[1].imshow(y.squeeze().detach().cpu().permute(1, 2, 0))
-    print(y)
-    plt.show()
+            loss = crit(y, x) + 0.25 * sum(d)
+            loss.backward()
+            optim.step()
+
+            epoch_loss += loss.item()
+
+        print(f"Loss: {epoch_loss / len(loader)}")
