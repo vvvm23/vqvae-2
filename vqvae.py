@@ -74,6 +74,7 @@ class Decoder(HelperModule):
             ))
             c_channel, n_channel = n_channel, out_channels
         layers.append(nn.Conv2d(c_channel, n_channel, 3, stride=1, padding=1))
+        layers.append(nn.ReLU())
 
         self.layers = nn.Sequential(*layers)
 
@@ -102,7 +103,7 @@ class CodeLayer(HelperModule):
         self.register_buffer("embed_avg", embed.clone())
 
     def forward(self, x: torch.FloatTensor) -> Tuple[torch.FloatTensor, float, torch.LongTensor]:
-        x = self.conv_in(x)
+        x = self.conv_in(x).permute(0,2,3,1)
         flatten = x.reshape(-1, self.dim)
         dist = (
             flatten.pow(2).sum(1, keepdim=True)
@@ -136,7 +137,7 @@ class CodeLayer(HelperModule):
         diff = (quantize.detach() - x).pow(2).mean()
         quantize = x + (quantize - x).detach()
 
-        return quantize, diff, embed_ind
+        return quantize.permute(0, 3, 1, 2), diff, embed_ind
 
     def embed_code(self, embed_id: torch.LongTensor) -> torch.FloatTensor:
         return F.embedding(embed_id, self.embed.transpose(0, 1))
@@ -183,9 +184,13 @@ class VQVAE(HelperModule):
         for i, sr in enumerate(scaling_rates[1:]):
             self.encoders.append(Encoder(hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
 
-        self.codebooks = nn.ModuleList([CodeLayer(hidden_channels+embed_dim*(nb_levels-1), embed_dim, nb_entries)])
+        # self.codebooks = nn.ModuleList([CodeLayer(hidden_channels+embed_dim*(nb_levels-1), embed_dim, nb_entries)])
+        # for i in range(nb_levels - 1):
+            # self.codebooks.append(CodeLayer(hidden_channels+embed_dim*(nb_levels-2-i), embed_dim, nb_entries))
+        self.codebooks = nn.ModuleList()
         for i in range(nb_levels - 1):
-            self.codebooks.append(CodeLayer(hidden_channels+embed_dim*(nb_levels-1-i), embed_dim, nb_entries))
+            self.codebooks.append(CodeLayer(hidden_channels+embed_dim, embed_dim, nb_entries))
+        self.codebooks.append(CodeLayer(hidden_channels, embed_dim, nb_entries))
 
         self.decoders = nn.ModuleList([Decoder(embed_dim*nb_levels, hidden_channels, in_channels, res_channels, nb_res_layers, scaling_rates[0])])
         for i, sr in enumerate(scaling_rates[1:]):
@@ -193,22 +198,48 @@ class VQVAE(HelperModule):
 
         self.upscalers = nn.ModuleList()
         for i in range(nb_levels - 1):
-            self.upscalers.append(Upscaler(embed_dim, scaling_rates[1:len(scaling_rates) - i]))
+            self.upscalers.append(Upscaler(embed_dim, scaling_rates[1:len(scaling_rates) - i][::-1]))
 
     def forward(self, x):
-        encoder_outputs = [x]
+        # TODO: Might be easier to replace these with dictionaries?
+        encoder_outputs = []
         code_outputs = []
+        decoder_outputs = []
+        upscale_counts = []
 
         for enc in self.encoders:
-            encoder_outputs.append(enc(encoder_outputs[-1]))
+            if len(encoder_outputs):
+                encoder_outputs.append(enc(encoder_outputs[-1]))
+            else:
+                encoder_outputs.append(enc(x))
 
-        return encoder_outputs
+        for l in range(self.nb_levels-1, -1, -1):
+            codebook, decoder = self.codebooks[l], self.decoders[l]
+
+            if len(decoder_outputs): # if we have previous levels to condition on
+                code_q, code_d, code_idx = codebook(torch.cat([encoder_outputs[l], decoder_outputs[-1]], axis=1))
+            else:
+                code_q, code_d, code_idx = codebook(encoder_outputs[l])
+
+            code_outputs = [self.upscalers[i](c, upscale_counts[i]) for i, c in enumerate(code_outputs)]
+            upscale_counts = [u+1 for u in upscale_counts]
+            decoder_outputs.append(decoder(torch.cat([code_q, *code_outputs], axis=1)))
+
+            code_outputs.append(code_q)
+            upscale_counts.append(0)
+
+        return encoder_outputs, decoder_outputs
 
 if __name__ == '__main__':
     from helper import get_parameter_count
-    net = VQVAE()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    nb_levels = 10 
+    net = VQVAE(nb_levels=nb_levels, scaling_rates=[2]*nb_levels).to(device)
     print(f"Number of trainable parameters: {get_parameter_count(net)}")
 
-    x = torch.randn(8, 3, 128, 128)
-    ys = net(x)
-    print('\n'.join(str(y.shape) for y in ys))
+    x = torch.randn(1, 3, 1024, 1024).to(device)
+    enc_out, dec_out = net(x)
+    print('\n'.join(str(y.shape) for y in enc_out))
+    print()
+    print('\n'.join(str(y.shape) for y in dec_out))
