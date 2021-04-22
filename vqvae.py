@@ -11,12 +11,12 @@ class ReZero(HelperModule):
     def build(self, in_channels: int, res_channels: int):
         self.layers = nn.Sequential(
             nn.Conv2d(in_channels, res_channels, 3, stride=1, padding=1, bias=False),
-            # nn.BatchNorm2d(res_channels),
-            nn.ReLU(),
+            nn.BatchNorm2d(res_channels),
+            nn.ReLU(inplace=True),
 
             nn.Conv2d(res_channels, in_channels, 3, stride=1, padding=1, bias=False),
-            # nn.BatchNorm2d(in_channels),
-            nn.ReLU(),
+            nn.BatchNorm2d(in_channels),
+            nn.ReLU(inplace=True),
         )
         self.alpha = nn.Parameter(torch.tensor(0.0))
 
@@ -45,10 +45,12 @@ class Encoder(HelperModule):
         for _ in range(downscale_steps):
             layers.append(nn.Sequential(
                 nn.Conv2d(c_channel, n_channel, 4, stride=2, padding=1),
-                nn.ReLU(),
+                nn.BatchNorm2d(n_channel),
+                nn.ReLU(inplace=True),
             ))
             c_channel, n_channel = n_channel, hidden_channels
         layers.append(nn.Conv2d(c_channel, n_channel, 3, stride=1, padding=1))
+        layers.append(nn.BatchNorm2d(n_channel))
         layers.append(ResidualStack(n_channel, res_channels, nb_res_layers))
 
         self.layers = nn.Sequential(*layers)
@@ -70,11 +72,13 @@ class Decoder(HelperModule):
         for _ in range(upscale_steps):
             layers.append(nn.Sequential(
                 nn.ConvTranspose2d(c_channel, n_channel, 4, stride=2, padding=1),
-                nn.ReLU(),
+                nn.BatchNorm2d(n_channel),
+                nn.ReLU(inplace=True),
             ))
             c_channel, n_channel = n_channel, out_channels
         layers.append(nn.Conv2d(c_channel, n_channel, 3, stride=1, padding=1))
-        layers.append(nn.ReLU())
+        layers.append(nn.BatchNorm2d(n_channel))
+        # layers.append(nn.ReLU(inplace=True))
 
         self.layers = nn.Sequential(*layers)
 
@@ -154,7 +158,8 @@ class Upscaler(HelperModule):
             layers = []
             for _ in range(upscale_steps):
                 layers.append(nn.ConvTranspose2d(embed_dim, embed_dim, 4, stride=2, padding=1))
-                layers.append(nn.ReLU())
+                layers.append(nn.BatchNorm2d(embed_dim))
+                layers.append(nn.ReLU(inplace=True))
             self.stages.append(nn.Sequential(*layers))
 
     def forward(self, x: torch.FloatTensor, stage: int) -> torch.FloatTensor:
@@ -197,6 +202,9 @@ class VQVAE(HelperModule):
         for i in range(nb_levels - 1):
             self.upscalers.append(Upscaler(embed_dim, scaling_rates[1:len(scaling_rates) - i][::-1]))
 
+    """
+        TODO: This in general needs a rework.
+    """
     def forward(self, x):
         # TODO: Might be easier to replace these with dictionaries?
         encoder_outputs = []
@@ -215,9 +223,9 @@ class VQVAE(HelperModule):
             codebook, decoder = self.codebooks[l], self.decoders[l]
 
             if len(decoder_outputs): # if we have previous levels to condition on
-                code_q, code_d, code_idx = codebook(torch.cat([encoder_outputs[l], decoder_outputs[-1]], axis=1))
+                code_q, code_d, _ = codebook(torch.cat([encoder_outputs[l], decoder_outputs[-1]], axis=1))
             else:
-                code_q, code_d, code_idx = codebook(encoder_outputs[l])
+                code_q, code_d, _ = codebook(encoder_outputs[l])
             diffs.append(code_d)
 
             code_outputs = [self.upscalers[i](c, upscale_counts[i]) for i, c in enumerate(code_outputs)]
