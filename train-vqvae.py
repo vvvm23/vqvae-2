@@ -22,6 +22,26 @@ def get_dataset(task: str, cfg):
         nb_test = int(len(dataset) * cfg.test_size)
         nb_train = len(dataset) - nb_test
         train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
+    elif task == 'ffhq256':
+        transforms = torchvision.transforms.Compose([
+            torchvision.transforms.Resize(256),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+        ])
+        dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
+        nb_test = int(len(dataset) * cfg.test_size)
+        nb_train = len(dataset) - nb_test
+        train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
+    elif task == 'ffhq128':
+        transforms = torchvision.transforms.Compose([
+            torchvision.transforms.Resize(128),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+        ])
+        dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
+        nb_test = int(len(dataset) * cfg.test_size)
+        nb_train = len(dataset) - nb_test
+        train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
     elif task == 'cifar10':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
@@ -29,13 +49,6 @@ def get_dataset(task: str, cfg):
         ])
         train_dataset = torchvision.datasets.CIFAR10('data', train=True, transform=transforms, download=True)
         test_dataset = torchvision.datasets.CIFAR10('data', train=False, transform=transforms, download=True)
-    elif task == 'stl10':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        train_dataset = torchvision.datasets.STL10('data', split='unlabeled', transform=transforms, download=True)
-        test_dataset = torchvision.datasets.STL10('data', split='test', transform=transforms, download=True)
     elif task == 'mnist':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
@@ -97,7 +110,6 @@ if __name__ == '__main__':
             epoch_r_loss += r_loss.item()
             epoch_l_loss += l_loss.item()
             pb.set_description(f"training_loss: {epoch_loss / (i+1)} [r_loss: {epoch_r_loss/ (i+1)}, l_loss: {epoch_l_loss / (i+1)}]")
-
         print(f"Training loss: {epoch_loss / len(train_loader)}")
 
         with torch.no_grad():
@@ -116,6 +128,5 @@ if __name__ == '__main__':
 
             if eid % cfg.image_frequency == 0:
                 save_image(y, f"samples/recon-{eid}.png", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
-
         print(f"Evaluation loss: {epoch_loss / len(test_loader)}")
         print()

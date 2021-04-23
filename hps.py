@@ -21,7 +21,42 @@ _ffhq1024 = {
 
     'learning_rate':            1e-4,
     'beta':                     0.25,
-    'batch_size':               4,
+    'batch_size':               8,
+    'max_epochs':               100,
+}
+
+_ffhq256 = {
+    'display_name':             'FFHQ256',
+
+    'in_channels':              3,
+    'hidden_channels':          128,
+    'res_channels':             32,
+    'nb_res_layers':            2,
+    'embed_dim':                64,
+    'nb_entries':               512,
+    'nb_levels':                2,
+    'scaling_rates':            [4, 2],
+
+    'learning_rate':            1e-4,
+    'beta':                     0.25,
+    'batch_size':               32,
+    'max_epochs':               100,
+}
+_ffhq128 = {
+    'display_name':             'FFHQ128',
+
+    'in_channels':              3,
+    'hidden_channels':          128,
+    'res_channels':             32,
+    'nb_res_layers':            2,
+    'embed_dim':                64,
+    'nb_entries':               512,
+    'nb_levels':                2,
+    'scaling_rates':            [4, 2],
+
+    'learning_rate':            1e-4,
+    'beta':                     0.25,
+    'batch_size':               64,
     'max_epochs':               100,
 }
 
@@ -61,8 +96,29 @@ _mnist = {
     'max_epochs':               100,
 }
 
+_kmnist = {
+    'display_name':             'Kuzushiji-MNIST',
+
+    'in_channels':              1,
+    'hidden_channels':          128,
+    'res_channels':             32,
+    'nb_res_layers':            2,
+    'embed_dim':                32,
+    'nb_entries':               128,
+    'nb_levels':                2,
+    'scaling_rates':            [2, 2],
+
+    'learning_rate':            1e-4,
+    'beta':                     0.25,
+    'batch_size':               32,
+    'max_epochs':               100,
+}
+
 HPS = {
     'ffhq1024': SimpleNamespace(**(_common | _ffhq1024)),
+    'ffhq256': SimpleNamespace(**(_common | _ffhq256)),
+    'ffhq128': SimpleNamespace(**(_common | _ffhq128)),
     'cifar10': SimpleNamespace(**(_common | _cifar10)),
     'mnist': SimpleNamespace(**(_common | _mnist)),
+    'kmnist': SimpleNamespace(**(_common | _kmnist)),
 }
