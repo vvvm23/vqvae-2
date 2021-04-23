@@ -82,14 +82,6 @@ if __name__ == '__main__':
 
     print(f"Initialising VQ-VAE-2 model")
     trainer = Trainer(cfg, args.cpu)
-    # device = get_device(args.cpu)
-    # net = VQVAE(in_channels=cfg.in_channels, 
-                # hidden_channels=cfg.hidden_channels, 
-                # embed_dim=cfg.embed_dim, 
-                # nb_entries=cfg.nb_entries, 
-                # nb_levels=cfg.nb_levels, 
-                # scaling_rates=cfg.scaling_rates).to(device)
-    # optim = torch.optim.Adam(net.parameters(), lr=cfg.learning_rate)
     print(f"Number of trainable parameters: {get_parameter_count(trainer.net)}")
 
     for eid in range(cfg.max_epochs):
@@ -106,7 +98,7 @@ if __name__ == '__main__':
         
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
         for i, (x, _) in enumerate(test_loader):
-            loss, r_loss, l_loss = trainer.eval(x)
+            loss, r_loss, l_loss, y = trainer.eval(x)
             epoch_loss += loss
             epoch_r_loss += r_loss
             epoch_l_loss += l_loss
@@ -114,5 +106,5 @@ if __name__ == '__main__':
         if eid % cfg.image_frequency == 0:
             save_image(y, f"samples/recon-{eid}.png", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
 
-    print(f"Evaluation loss: {epoch_loss / len(test_loader)}")
-    print()
+        print(f"Evaluation loss: {epoch_loss / len(test_loader)}")
+        print()
