@@ -19,40 +19,45 @@ def get_dataset(task: str, cfg):
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
         ])
-        # dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
-        dataset = NoLabelImageFolder('data/ffhq1024', transform=transforms)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=True)
+        dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
+        nb_test = int(len(dataset) * cfg.test_size)
+        nb_train = len(dataset) - nb_test
+        train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
+        # dataset = NoLabelImageFolder('data/ffhq1024', transform=transforms)
     elif task == 'cifar10':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
         ])
-        dataset = torchvision.datasets.CIFAR10('data', transform=transforms, download=True)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=True)
+        train_dataset = torchvision.datasets.CIFAR10('data', train=True, transform=transforms, download=True)
+        test_dataset = torchvision.datasets.CIFAR10('data', train=False, transform=transforms, download=True)
     elif task == 'stl10':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
         ])
-        dataset = torchvision.datasets.STL10('data', split='unlabeled', transform=transforms, download=True)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=True)
+        train_dataset = torchvision.datasets.STL10('data', split='unlabeled', transform=transforms, download=True)
+        test_dataset = torchvision.datasets.STL10('data', split='test', transform=transforms, download=True)
     elif task == 'mnist':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
         ])
-        dataset = torchvision.datasets.MNIST('data', train=True, transform=transforms, download=True)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=True)
+        train_dataset = torchvision.datasets.MNIST('data', train=True, transform=transforms, download=True)
+        test_dataset = torchvision.datasets.MNIST('data', train=False, transform=transforms, download=True)
     elif task == 'kmnist':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
         ])
-        dataset = torchvision.datasets.KMNIST('data', train=True, transform=transforms, download=True)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=True)
+        train_dataset = torchvision.datasets.KMNIST('data', train=True, transform=transforms, download=True)
+        test_dataset = torchvision.datasets.KMNIST('data', train=False, transform=transforms, download=True)
     else:
         print("> Unknown dataset. Terminating")
         exit()
 
-    return dataset, loader
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=False)
+
+    return train_loader, test_loader
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -62,7 +67,7 @@ if __name__ == '__main__':
     cfg = HPS[args.task]
 
     print(f"Loading {cfg.display_name} dataset")
-    dataset, loader = get_dataset(args.task, cfg)
+    train_loader, test_loader = get_dataset(args.task, cfg)
     device = get_device(args.cpu)
     net = VQVAE(in_channels=cfg.in_channels, 
                 hidden_channels=cfg.hidden_channels, 
@@ -74,7 +79,7 @@ if __name__ == '__main__':
 
     for eid in range(cfg.max_epochs):
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
-        pb = tqdm(loader)
+        pb = tqdm(train_loader)
         net.train()
         for i, (x, _) in enumerate(pb):
             optim.zero_grad()
