@@ -2,10 +2,7 @@ import torch
 
 from vqvae import VQVAE
 from helper import get_device
-"""
-    Might abstract away some training routines here.
-    ..or just delete this file
-"""
+
 class Trainer:
     def __init__(self, cfg, cpu=False):
         self.device = get_device(cpu)

@@ -115,10 +115,10 @@ _kmnist = {
 }
 
 HPS = {
-    'ffhq1024': SimpleNamespace(**(_common | _ffhq1024)),
-    'ffhq256': SimpleNamespace(**(_common | _ffhq256)),
-    'ffhq128': SimpleNamespace(**(_common | _ffhq128)),
-    'cifar10': SimpleNamespace(**(_common | _cifar10)),
-    'mnist': SimpleNamespace(**(_common | _mnist)),
-    'kmnist': SimpleNamespace(**(_common | _kmnist)),
+    'ffhq1024':     SimpleNamespace(**(_common | _ffhq1024)),
+    'ffhq256':      SimpleNamespace(**(_common | _ffhq256)),
+    'ffhq128':      SimpleNamespace(**(_common | _ffhq128)),
+    'cifar10':      SimpleNamespace(**(_common | _cifar10)),
+    'mnist':        SimpleNamespace(**(_common | _mnist)),
+    'kmnist':       SimpleNamespace(**(_common | _kmnist)),
 }

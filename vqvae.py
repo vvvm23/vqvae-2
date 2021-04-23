@@ -167,6 +167,7 @@ class Upscaler(HelperModule):
 
 """
     Main VQ-VAE-2 Module, capable of support arbitrary number of levels
+    TODO: A lot of this class could do with a refactor. It works, but at what cost?
 """
 class VQVAE(HelperModule):
     def build(self,
@@ -186,9 +187,6 @@ class VQVAE(HelperModule):
         for i, sr in enumerate(scaling_rates[1:]):
             self.encoders.append(Encoder(hidden_channels, hidden_channels, res_channels, nb_res_layers, sr))
 
-        # self.codebooks = nn.ModuleList([CodeLayer(hidden_channels+embed_dim*(nb_levels-1), embed_dim, nb_entries)])
-        # for i in range(nb_levels - 1):
-            # self.codebooks.append(CodeLayer(hidden_channels+embed_dim*(nb_levels-2-i), embed_dim, nb_entries))
         self.codebooks = nn.ModuleList()
         for i in range(nb_levels - 1):
             self.codebooks.append(CodeLayer(hidden_channels+embed_dim, embed_dim, nb_entries))
@@ -202,9 +200,6 @@ class VQVAE(HelperModule):
         for i in range(nb_levels - 1):
             self.upscalers.append(Upscaler(embed_dim, scaling_rates[1:len(scaling_rates) - i][::-1]))
 
-    """
-        TODO: This in general needs a rework.
-    """
     def forward(self, x):
         encoder_outputs = []
         code_outputs = []
