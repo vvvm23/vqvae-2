@@ -14,7 +14,7 @@ This project will not only contain the VQ-VAE-2 architecture, but also an exampl
 prior and latent dataset extraction.
 
 ## Usage
-`TODO: Add usage instructions`
+`python main-vqvae.py --task task_name` will run VQ-VAE-2 training using the config `task_name` found in `hps.py`. Defaults to `cifar10`.
 
 ## Modifications
 - Replacing residual layers with ReZero layers.
@@ -24,6 +24,16 @@ prior and latent dataset extraction.
 
 ## Checkpoints
 `TODO: Add model checkpoints`
+
+### Roadmap
+- [ ] Prettier outputs
+- [ ] Server mode (no fancy printing)
+- [ ] Experiment directories (containing logs / checkpoints / etc)
+- [ ] Accumulated gradient training (for larger batch sizes on limited resources)
+- [ ] Learning rate schedulers
+- [ ] Samples and checkpoints on FFHQ1024
+- [ ] Autoregressive prior models / training scripts
+- [ ] Full system sampling
 
 ### Citations
 **Generating Diverse High-Fidelity Images with VQ-VAE-2**
