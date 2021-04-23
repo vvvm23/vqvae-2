@@ -206,7 +206,6 @@ class VQVAE(HelperModule):
         TODO: This in general needs a rework.
     """
     def forward(self, x):
-        # TODO: Might be easier to replace these with dictionaries?
         encoder_outputs = []
         code_outputs = []
         decoder_outputs = []

@@ -100,8 +100,7 @@ if __name__ == '__main__':
             x = x.to(device)
             y, d, _, _ = net(x)
 
-            r_loss, l_loss = ((y-x)**2).mean(), sum(d)
-
+            r_loss, l_loss = y.sub(x).pow(2).mean(), sum(d)
             loss = r_loss + cfg.beta*l_loss
             loss.backward()
             optim.step()
@@ -120,8 +119,9 @@ if __name__ == '__main__':
                 x = x.to(device)
                 y, d, _, _ = net(x)
 
-                r_loss, l_loss = (y-x).pow(2).mean(), sum(d)
+                r_loss, l_loss = y.sub(x).pow(2).mean(), sum(d)
                 loss = r_loss + cfg.beta*l_loss
+
                 epoch_loss += loss.item()
                 epoch_r_loss += r_loss.item()
                 epoch_l_loss += l_loss.item()
