@@ -1,24 +1,28 @@
 import torch
+
+from vqvae import VQVAE
+from helper import get_device
 """
     Might abstract away some training routines here.
     ..or just delete this file
 """
 class Trainer:
-    def __init__(self, cfg):
-        self.device = get_device(args.cpu)
+    def __init__(self, cfg, cpu=False):
+        self.device = get_device(cpu)
         self.net = VQVAE(in_channels=cfg.in_channels, 
                     hidden_channels=cfg.hidden_channels, 
                     embed_dim=cfg.embed_dim, 
                     nb_entries=cfg.nb_entries, 
                     nb_levels=cfg.nb_levels, 
                     scaling_rates=cfg.scaling_rates).to(self.device)
-        self.opt = torch.optim.Adam(net.parameters(), lr=cfg.learning_rate)
+        self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
+        self.beta = cfg.beta
 
     def _calculate_loss(self, x: torch.FloatTensor):
         x = x.to(self.device)
         y, d, _, _ = self.net(x)
         r_loss, l_loss = y.sub(x).pow(2).mean(), sum(d)
-        loss = r_loss + cfg.beta*l_loss
+        loss = r_loss + self.beta*l_loss
         return loss, r_loss, l_loss
 
     # TODO: maybe train without optim update, just accumulate grads?

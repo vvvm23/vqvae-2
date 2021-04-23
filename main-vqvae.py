@@ -8,7 +8,7 @@ from tqdm import tqdm
 import argparse
 from math import sqrt
 
-from vqvae import VQVAE
+from trainer import Trainer
 from hps import HPS
 from helper import NoLabelImageFolder, get_device, get_parameter_count
 
@@ -81,52 +81,38 @@ if __name__ == '__main__':
     train_loader, test_loader = get_dataset(args.task, cfg)
 
     print(f"Initialising VQ-VAE-2 model")
-    device = get_device(args.cpu)
-    net = VQVAE(in_channels=cfg.in_channels, 
-                hidden_channels=cfg.hidden_channels, 
-                embed_dim=cfg.embed_dim, 
-                nb_entries=cfg.nb_entries, 
-                nb_levels=cfg.nb_levels, 
-                scaling_rates=cfg.scaling_rates).to(device)
-    optim = torch.optim.Adam(net.parameters(), lr=cfg.learning_rate)
-    print(f"Number of trainable parameters: {get_parameter_count(net)}")
+    trainer = Trainer(cfg, args.cpu)
+    # device = get_device(args.cpu)
+    # net = VQVAE(in_channels=cfg.in_channels, 
+                # hidden_channels=cfg.hidden_channels, 
+                # embed_dim=cfg.embed_dim, 
+                # nb_entries=cfg.nb_entries, 
+                # nb_levels=cfg.nb_levels, 
+                # scaling_rates=cfg.scaling_rates).to(device)
+    # optim = torch.optim.Adam(net.parameters(), lr=cfg.learning_rate)
+    print(f"Number of trainable parameters: {get_parameter_count(trainer.net)}")
 
     for eid in range(cfg.max_epochs):
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
         pb = tqdm(train_loader)
-        net.train()
+        # net.train()
         for i, (x, _) in enumerate(pb):
-            optim.zero_grad()
-            x = x.to(device)
-            y, d, _, _ = net(x)
-
-            r_loss, l_loss = y.sub(x).pow(2).mean(), sum(d)
-            loss = r_loss + cfg.beta*l_loss
-            loss.backward()
-            optim.step()
-
-            epoch_loss += loss.item()
-            epoch_r_loss += r_loss.item()
-            epoch_l_loss += l_loss.item()
+            loss, r_loss, l_loss = trainer.train(x)
+            epoch_loss += loss
+            epoch_r_loss += r_loss
+            epoch_l_loss += l_loss
             pb.set_description(f"training_loss: {epoch_loss / (i+1)} [r_loss: {epoch_r_loss/ (i+1)}, l_loss: {epoch_l_loss / (i+1)}]")
         print(f"Training loss: {epoch_loss / len(train_loader)}")
+        
+        epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
+        for i, (x, _) in enumerate(test_loader):
+            loss, r_loss, l_loss = trainer.eval(x)
+            epoch_loss += loss
+            epoch_r_loss += r_loss
+            epoch_l_loss += l_loss
 
-        with torch.no_grad():
-            epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
-            net.eval()
-            for i, (x, _) in enumerate(test_loader):
-                optim.zero_grad()
-                x = x.to(device)
-                y, d, _, _ = net(x)
+        if eid % cfg.image_frequency == 0:
+            save_image(y, f"samples/recon-{eid}.png", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
 
-                r_loss, l_loss = y.sub(x).pow(2).mean(), sum(d)
-                loss = r_loss + cfg.beta*l_loss
-
-                epoch_loss += loss.item()
-                epoch_r_loss += r_loss.item()
-                epoch_l_loss += l_loss.item()
-
-            if eid % cfg.image_frequency == 0:
-                save_image(y, f"samples/recon-{eid}.png", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
-        print(f"Evaluation loss: {epoch_loss / len(test_loader)}")
-        print()
+    print(f"Evaluation loss: {epoch_loss / len(test_loader)}")
+    print()
