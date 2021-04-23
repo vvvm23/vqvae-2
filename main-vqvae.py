@@ -9,66 +9,9 @@ import argparse
 from math import sqrt
 
 from trainer import Trainer
+from datasets import get_dataset
 from hps import HPS
 from helper import NoLabelImageFolder, get_device, get_parameter_count
-
-def get_dataset(task: str, cfg):
-    if task == 'ffhq1024':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
-        nb_test = int(len(dataset) * cfg.test_size)
-        nb_train = len(dataset) - nb_test
-        train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
-    elif task == 'ffhq256':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.Resize(256),
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
-        nb_test = int(len(dataset) * cfg.test_size)
-        nb_train = len(dataset) - nb_test
-        train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
-    elif task == 'ffhq128':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.Resize(128),
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
-        nb_test = int(len(dataset) * cfg.test_size)
-        nb_train = len(dataset) - nb_test
-        train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
-    elif task == 'cifar10':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        train_dataset = torchvision.datasets.CIFAR10('data', train=True, transform=transforms, download=True)
-        test_dataset = torchvision.datasets.CIFAR10('data', train=False, transform=transforms, download=True)
-    elif task == 'mnist':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-        ])
-        train_dataset = torchvision.datasets.MNIST('data', train=True, transform=transforms, download=True)
-        test_dataset = torchvision.datasets.MNIST('data', train=False, transform=transforms, download=True)
-    elif task == 'kmnist':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-        ])
-        train_dataset = torchvision.datasets.KMNIST('data', train=True, transform=transforms, download=True)
-        test_dataset = torchvision.datasets.KMNIST('data', train=False, transform=transforms, download=True)
-    else:
-        print("> Unknown dataset. Terminating")
-        exit()
-
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=False)
-
-    return train_loader, test_loader
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -87,7 +30,6 @@ if __name__ == '__main__':
     for eid in range(cfg.max_epochs):
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
         pb = tqdm(train_loader)
-        # net.train()
         for i, (x, _) in enumerate(pb):
             loss, r_loss, l_loss = trainer.train(x)
             epoch_loss += loss
@@ -97,7 +39,7 @@ if __name__ == '__main__':
         print(f"Training loss: {epoch_loss / len(train_loader)}")
         
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
-        for i, (x, _) in enumerate(test_loader):
+        for x, _ in test_loader:
             loss, r_loss, l_loss, y = trainer.eval(x)
             epoch_loss += loss
             epoch_r_loss += r_loss
