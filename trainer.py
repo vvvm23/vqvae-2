@@ -23,14 +23,14 @@ class Trainer:
         y, d, _, _ = self.net(x)
         r_loss, l_loss = y.sub(x).pow(2).mean(), sum(d)
         loss = r_loss + self.beta*l_loss
-        return loss, r_loss, l_loss
+        return loss, r_loss, l_loss, y
 
     # TODO: maybe train without optim update, just accumulate grads?
     # another function can then call step
     def train(self, x: torch.FloatTensor):
         self.net.train()
         self.opt.zero_grad()
-        loss, r_loss, l_loss = self._calculate_loss(x)
+        loss, r_loss, l_loss, _ = self._calculate_loss(x)
         loss.backward()
         self.opt.step()
         return loss.item(), r_loss.item(), l_loss.item()
@@ -39,11 +39,11 @@ class Trainer:
     def eval(self, x: torch.FloatTensor):
         self.net.eval()
         self.opt.zero_grad()
-        loss, r_loss, l_loss = self._calculate_loss(x)
-        return loss.item(), r_loss.item(), l_loss.item()
+        loss, r_loss, l_loss, y = self._calculate_loss(x)
+        return loss.item(), r_loss.item(), l_loss.item(), y
 
+    # TODO: Checkpointing routines
     def save_checkpoint(self):
         pass
-
     def load_checkpoint(self):
         pass

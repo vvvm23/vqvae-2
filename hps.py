@@ -56,7 +56,7 @@ _ffhq128 = {
 
     'learning_rate':            1e-4,
     'beta':                     0.25,
-    'batch_size':               64,
+    'batch_size':               128,
     'max_epochs':               100,
 }
 
