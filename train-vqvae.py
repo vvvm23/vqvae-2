@@ -10,9 +10,8 @@ from math import sqrt
 
 from vqvae import VQVAE
 from hps import HPS
-from helper import NoLabelImageFolder, get_device
+from helper import NoLabelImageFolder, get_device, get_parameter_count
 
-# TODO: Function to generate train / test splits
 def get_dataset(task: str, cfg):
     if task == 'ffhq1024':
         transforms = torchvision.transforms.Compose([
@@ -23,7 +22,6 @@ def get_dataset(task: str, cfg):
         nb_test = int(len(dataset) * cfg.test_size)
         nb_train = len(dataset) - nb_test
         train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
-        # dataset = NoLabelImageFolder('data/ffhq1024', transform=transforms)
     elif task == 'cifar10':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
@@ -54,8 +52,8 @@ def get_dataset(task: str, cfg):
         print("> Unknown dataset. Terminating")
         exit()
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.batch_size, num_workers=8, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=False)
 
     return train_loader, test_loader
 
@@ -68,6 +66,8 @@ if __name__ == '__main__':
 
     print(f"Loading {cfg.display_name} dataset")
     train_loader, test_loader = get_dataset(args.task, cfg)
+
+    print(f"Initialising VQ-VAE-2 model")
     device = get_device(args.cpu)
     net = VQVAE(in_channels=cfg.in_channels, 
                 hidden_channels=cfg.hidden_channels, 
@@ -76,6 +76,7 @@ if __name__ == '__main__':
                 nb_levels=cfg.nb_levels, 
                 scaling_rates=cfg.scaling_rates).to(device)
     optim = torch.optim.Adam(net.parameters(), lr=cfg.learning_rate)
+    print(f"Number of trainable parameters: {get_parameter_count(net)}")
 
     for eid in range(cfg.max_epochs):
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0

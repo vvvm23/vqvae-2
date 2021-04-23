@@ -4,6 +4,7 @@ _common = {
     'checkpoint_frequency':         10,
     'image_frequency':              100,
     'test_size':                    0.1,
+    'nb_workers':                   8,
 }
 
 _ffhq1024 = {
