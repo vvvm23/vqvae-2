@@ -98,7 +98,24 @@ if __name__ == '__main__':
             epoch_l_loss += l_loss.item()
             pb.set_description(f"training_loss: {epoch_loss / (i+1)} [r_loss: {epoch_r_loss/ (i+1)}, l_loss: {epoch_l_loss / (i+1)}]")
 
-            if i % cfg.image_frequency == 0:
-                save_image(y, f"samples/recon-{i}.png", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
+        print(f"Training loss: {epoch_loss / len(train_loader)}")
 
-        print(f"Loss: {epoch_loss / len(loader)}")
+        with torch.no_grad():
+            epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
+            net.eval()
+            for i, (x, _) in enumerate(test_loader):
+                optim.zero_grad()
+                x = x.to(device)
+                y, d, _, _ = net(x)
+
+                r_loss, l_loss = (y-x).pow(2).mean(), sum(d)
+                loss = r_loss + cfg.beta*l_loss
+                epoch_loss += loss.item()
+                epoch_r_loss += r_loss.item()
+                epoch_l_loss += l_loss.item()
+
+            if eid % cfg.image_frequency == 0:
+                save_image(y, f"samples/recon-{eid}.png", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
+
+        print(f"Evaluation loss: {epoch_loss / len(test_loader)}")
+        print()
