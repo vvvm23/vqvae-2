@@ -27,8 +27,9 @@ prior and latent dataset extraction.
 
 ### Roadmap
 - [ ] Prettier outputs
-- [ ] Server mode (no fancy printing)
-- [ ] Experiment directories (containing logs / checkpoints / etc)
+- [X] Server mode (no fancy printing)
+- [X] Experiment directories (containing logs / checkpoints / etc)
+- [ ] Output logging
 - [ ] Accumulated gradient training (for larger batch sizes on limited resources)
 - [ ] Learning rate schedulers
 - [ ] Samples and checkpoints on FFHQ1024

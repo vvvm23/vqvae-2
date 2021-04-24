@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 import argparse
 import datetime
+import time
 from pathlib import Path
 from math import sqrt
 
@@ -48,6 +49,7 @@ if __name__ == '__main__':
     for eid in range(cfg.max_epochs):
         print(f"> Epoch {eid+1}/{cfg.max_epochs}:")
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
+        epoch_start_time = time.time()
         pb = tqdm(train_loader, disable=args.no_tqdm)
         for i, (x, _) in enumerate(pb):
             loss, r_loss, l_loss = trainer.train(x)
@@ -55,7 +57,7 @@ if __name__ == '__main__':
             epoch_r_loss += r_loss
             epoch_l_loss += l_loss
             pb.set_description(f"training_loss: {epoch_loss / (i+1)} [r_loss: {epoch_r_loss/ (i+1)}, l_loss: {epoch_l_loss / (i+1)}]")
-        print(f"> Training loss: {epoch_loss / len(train_loader)}")
+        print(f"> Training loss: {epoch_loss / len(train_loader)} [r_loss: {epoch_r_loss / len(train_loader)}, l_loss: {epoch_l_loss / len(train_loader)}]")
         
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
         pb = tqdm(test_loader, disable=args.no_tqdm)
@@ -71,5 +73,6 @@ if __name__ == '__main__':
         if eid % cfg.checkpoint_frequency == 0 and not args.no_save:
             trainer.save_checkpoint(chk_dir / f"{args.task}-state-dict-{str(eid).zfill(4)}.pt")
 
-        print(f"> Evaluation loss: {epoch_loss / len(test_loader)}")
+        print(f"> Evaluation loss: {epoch_loss / len(test_loader)} [r_loss: {epoch_r_loss / len(test_loader)}, l_loss: {epoch_l_loss / len(test_loader)}]")
+        print(f"> Epoch time taken: {time.time() - epoch_start_time:.2f} seconds.")
         print()
