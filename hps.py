@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 _common = {
-    'checkpoint_frequency':         10,
+    'checkpoint_frequency':         5,
     'image_frequency':              1,
     'test_size':                    0.1,
     'nb_workers':                   8,

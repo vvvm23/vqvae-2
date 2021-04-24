@@ -39,8 +39,9 @@ class Trainer:
         loss, r_loss, l_loss, y = self._calculate_loss(x)
         return loss.item(), r_loss.item(), l_loss.item(), y
 
-    # TODO: Checkpointing routines
-    def save_checkpoint(self):
-        pass
+    def save_checkpoint(self, path):
+        torch.save(self.net.state_dict(), path)
+
+    # TODO: load state dict
     def load_checkpoint(self):
         pass

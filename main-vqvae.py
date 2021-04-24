@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 import argparse
+import datetime
+from pathlib import Path
 from math import sqrt
 
 from trainer import Trainer
@@ -18,8 +20,23 @@ if __name__ == '__main__':
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--task', type=str, default='cifar10')
     parser.add_argument('--no-tqdm', action='store_true')
+    parser.add_argument('--no-save', action='store_true')
     args = parser.parse_args()
     cfg = HPS[args.task]
+
+    if not args.no_save:
+        save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+        runs_dir = Path(f"runs")
+        root_dir = runs_dir / f"{args.task}-{save_id}"
+        chk_dir = root_dir / "checkpoints"
+        img_dir = root_dir / "images"
+        log_dir = root_dir / "logs"
+
+        runs_dir.mkdir(exist_ok=True)
+        root_dir.mkdir(exist_ok=True)
+        chk_dir.mkdir(exist_ok=True)
+        img_dir.mkdir(exist_ok=True)
+        log_dir.mkdir(exist_ok=True)
 
     print(f"> Loading {cfg.display_name} dataset")
     train_loader, test_loader = get_dataset(args.task, cfg)
@@ -41,14 +58,18 @@ if __name__ == '__main__':
         print(f"> Training loss: {epoch_loss / len(train_loader)}")
         
         epoch_loss, epoch_r_loss, epoch_l_loss = 0.0, 0.0, 0.0
-        for x, _ in test_loader:
+        pb = tqdm(test_loader, disable=args.no_tqdm)
+        for i, (x, _) in enumerate(pb):
             loss, r_loss, l_loss, y = trainer.eval(x)
             epoch_loss += loss
             epoch_r_loss += r_loss
             epoch_l_loss += l_loss
+            pb.set_description(f"evaluation: {epoch_loss / (i+1)} [r_loss: {epoch_r_loss/ (i+1)}, l_loss: {epoch_l_loss / (i+1)}]")
+            if i == 0 and not args.no_save and eid % cfg.image_frequency == 0:
+                save_image(y, img_dir / f"recon-{eid}.png", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
 
-        if eid % cfg.image_frequency == 0:
-            save_image(y, f"samples/recon-{eid}.png", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
+        if eid % cfg.checkpoint_frequency == 0 and not args.no_save:
+            trainer.save_checkpoint(chk_dir / f"{args.task}-state-dict-{str(eid).zfill(4)}.pt")
 
         print(f"> Evaluation loss: {epoch_loss / len(test_loader)}")
         print()
