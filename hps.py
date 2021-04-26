@@ -70,7 +70,7 @@ _cifar10 = {
     'embed_dim':                64,
     'nb_entries':               512,
     'nb_levels':                2,
-    'scaling_rates':            [4, 2],
+    'scaling_rates':            [2, 2],
 
     'learning_rate':            1e-4,
     'beta':                     0.25,
