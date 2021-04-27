@@ -42,6 +42,5 @@ class Trainer:
     def save_checkpoint(self, path):
         torch.save(self.net.state_dict(), path)
 
-    # TODO: load state dict
-    def load_checkpoint(self):
-        pass
+    def load_checkpoint(self, path):
+        self.net.load_state_dict(torch.load(path))
