@@ -20,7 +20,8 @@ prior and latent dataset extraction.
 - Replacing residual layers with ReZero layers.
 
 ## Samples
-`TODO: Add some samples`
+*Reconstructions from FFHQ1024 using a 3-level VQ-VAE-2*
+![Reconstructions from FFHQ1024 using a 3-level VQ-VAE-2](recon-example.png)
 
 ## Checkpoints
 `TODO: Add model checkpoints`
