@@ -1,7 +1,7 @@
 import torch
 import torchvision
 
-def get_dataset(task: str, cfg):
+def get_dataset(task: str, cfg, shuffle_test=False):
     if task == 'ffhq1024':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
@@ -55,6 +55,6 @@ def get_dataset(task: str, cfg):
         exit()
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=shuffle_test)
 
     return train_loader, test_loader

@@ -20,13 +20,39 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--task', type=str, default='cifar10')
+    parser.add_argument('--load-path', type=str, default=None)
     parser.add_argument('--no-tqdm', action='store_true')
     parser.add_argument('--no-save', action='store_true')
+    parser.add_argument('--evaluate', action='store_true')
     args = parser.parse_args()
     cfg = HPS[args.task]
 
+    save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+
+    print(f"> Initialising VQ-VAE-2 model")
+    trainer = Trainer(cfg, args.cpu)
+    print(f"> Number of parameters: {get_parameter_count(trainer.net)}")
+
+    if args.load_path:
+        print(f"> Loading model parameters from checkpoint")
+        trainer.load_checkpoint(args.load_path)
+
+    if args.evaluate:
+        # TODO: might leak train data into test given a random split
+        # TODO: worth to split ffhq1024 beforehand
+        # TODO: apparently first 60_000 are training, remaining are test
+        print(f"> Loading {cfg.display_name} dataset")
+        _, test_loader = get_dataset(args.task, cfg, shuffle_test=True)
+        print(f"> Generating evaluation batch of reconstructions")
+        file_name = f"./recon-{save_id}-eval.png"
+        for x, _ in test_loader:
+            *_, y = trainer.eval(x)
+            save_image(y, file_name, nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
+            break
+        print(f"> Saved to {file_name}")
+        exit()
+        
     if not args.no_save:
-        save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         runs_dir = Path(f"runs")
         root_dir = runs_dir / f"{args.task}-{save_id}"
         chk_dir = root_dir / "checkpoints"
@@ -41,10 +67,6 @@ if __name__ == '__main__':
 
     print(f"> Loading {cfg.display_name} dataset")
     train_loader, test_loader = get_dataset(args.task, cfg)
-
-    print(f"> Initialising VQ-VAE-2 model")
-    trainer = Trainer(cfg, args.cpu)
-    print(f"> Number of trainable parameters: {get_parameter_count(trainer.net)}")
 
     for eid in range(cfg.max_epochs):
         print(f"> Epoch {eid+1}/{cfg.max_epochs}:")
