@@ -21,6 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--task', type=str, default='cifar10')
     parser.add_argument('--load-path', type=str, default=None)
+    parser.add_argument('--batch-size', type=int, default=None)
     parser.add_argument('--no-tqdm', action='store_true')
     parser.add_argument('--no-save', action='store_true')
     parser.add_argument('--evaluate', action='store_true')
@@ -36,6 +37,9 @@ if __name__ == '__main__':
     if args.load_path:
         print(f"> Loading model parameters from checkpoint")
         trainer.load_checkpoint(args.load_path)
+
+    if args.batch_size:
+        cfg.batch_size = args.batch_size
 
     if args.evaluate:
         # TODO: might leak train data into test given a random split
