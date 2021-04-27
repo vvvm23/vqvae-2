@@ -10,9 +10,6 @@ def get_dataset(task: str, cfg, shuffle_test=False):
         dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
         train_idx, test_idx = torch.arange(0, 50_000 - 1), torch.arange(50_000, len(dataset))
         train_dataset, test_dataset = torch.utils.data.Subset(dataset, train_idx), torch.utils.data.Subset(dataset, test_idx)
-        # nb_test = int(len(dataset) * cfg.test_size)
-        # nb_train = len(dataset) - nb_test
-        # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
     elif task == 'ffhq256':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.Resize(256),
@@ -21,9 +18,6 @@ def get_dataset(task: str, cfg, shuffle_test=False):
         ])
         dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
         train_dataset, test_dataset = torch.utils.data.Subset(dataset, train_idx), torch.utils.data.Subset(dataset, test_idx)
-        # nb_test = int(len(dataset) * cfg.test_size)
-        # nb_train = len(dataset) - nb_test
-        # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
     elif task == 'ffhq128':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
@@ -31,9 +25,6 @@ def get_dataset(task: str, cfg, shuffle_test=False):
         ])
         dataset = torchvision.datasets.ImageFolder('data/ffhq128', transform=transforms)
         train_dataset, test_dataset = torch.utils.data.Subset(dataset, train_idx), torch.utils.data.Subset(dataset, test_idx)
-        # nb_test = int(len(dataset) * cfg.test_size)
-        # nb_train = len(dataset) - nb_test
-        # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [nb_train, nb_test])
     elif task == 'cifar10':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),

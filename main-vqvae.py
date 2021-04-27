@@ -42,9 +42,6 @@ if __name__ == '__main__':
         cfg.batch_size = args.batch_size
 
     if args.evaluate:
-        # TODO: might leak train data into test given a random split
-        # TODO: worth to split ffhq1024 beforehand
-        # TODO: apparently first 60_000 are training, remaining are test
         print(f"> Loading {cfg.display_name} dataset")
         _, test_loader = get_dataset(args.task, cfg, shuffle_test=True)
         print(f"> Generating evaluation batch of reconstructions")
