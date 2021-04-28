@@ -14,7 +14,24 @@ This project will not only contain the VQ-VAE-2 architecture, but also an exampl
 prior and latent dataset extraction.
 
 ## Usage
-`python main-vqvae.py --task task_name` will run VQ-VAE-2 training using the config `task_name` found in `hps.py`. Defaults to `cifar10`.
+Run VQ-VAE-2 training using the config `task_name` found in `hps.py`. Defaults to `cifar10`.
+```
+python main-vqvae.py --task task_name
+```
+
+Evaluate VQ-VAE-2 from parameters `state_dict_path` on task `task_name`. Defaults to `cifar10`
+```
+python main-vqvae.py --task task_name --load-path state_dict_path --evaluate
+```
+
+Other useful flags:
+```
+--no-save       # disables saving of files during training
+--cpu           # do not use GPU
+--batch-size    # overrides batch size in cfg.py, useful for evaluating on larger batch size
+--no-tqdm       # disable tqdm status bars
+--save-jpg      # save all images as jpg instead of png, useful for extreme resolutions
+```
 
 ## Modifications
 - Replacing residual layers with ReZero layers.
