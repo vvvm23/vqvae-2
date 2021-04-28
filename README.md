@@ -14,12 +14,12 @@ This project will not only contain the VQ-VAE-2 architecture, but also an exampl
 prior and latent dataset extraction.
 
 ## Usage
-Run VQ-VAE-2 training using the config `task_name` found in `hps.py`. Defaults to `cifar10`.
+Run VQ-VAE-2 training using the config `task_name` found in `hps.py`. Defaults to `cifar10`:
 ```
 python main-vqvae.py --task task_name
 ```
 
-Evaluate VQ-VAE-2 from parameters `state_dict_path` on task `task_name`. Defaults to `cifar10`
+Evaluate VQ-VAE-2 from parameters `state_dict_path` on task `task_name`. Defaults to `cifar10`:
 ```
 python main-vqvae.py --task task_name --load-path state_dict_path --evaluate
 ```
@@ -50,7 +50,7 @@ Other useful flags:
 - [ ] Output logging
 - [ ] Accumulated gradient training (for larger batch sizes on limited resources)
 - [ ] Learning rate schedulers
-- [ ] Samples and checkpoints on FFHQ1024
+- [X] Samples and checkpoints on FFHQ1024
 - [ ] Autoregressive prior models / training scripts
 - [ ] Full system sampling
 
@@ -62,6 +62,18 @@ Other useful flags:
       author={Ali Razavi and Aaron van den Oord and Oriol Vinyals},
       year={2019},
       eprint={1906.00446},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
+
+**PixelSNAIL: An Improved Autoregressive Generative Model**
+```
+@misc{chen2017pixelsnail,
+      title={PixelSNAIL: An Improved Autoregressive Generative Model}, 
+      author={Xi Chen and Nikhil Mishra and Mostafa Rohaninejad and Pieter Abbeel},
+      year={2017},
+      eprint={1712.09763},
       archivePrefix={arXiv},
       primaryClass={cs.LG}
 }
