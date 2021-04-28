@@ -132,4 +132,3 @@ dmypy.json
 data/
 samples/
 runs/
-*.pt

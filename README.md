@@ -24,7 +24,7 @@ prior and latent dataset extraction.
 ![Reconstructions from FFHQ1024 using a 3-level VQ-VAE-2](recon-example.png)
 
 ## Checkpoints
-`TODO: Add model checkpoints`
+[FFHQ1024 - 3-stage VQ-VAE-2](ffhq1024-state-dict-0017.pt)
 
 ### Roadmap
 - [ ] Prettier outputs
