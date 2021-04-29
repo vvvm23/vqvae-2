@@ -101,13 +101,14 @@ class CodeLayer(HelperModule):
         self.decay = 0.99
         self.eps = 1e-5
 
-        embed = torch.randn(embed_dim, nb_entries)
+        embed = torch.randn(embed_dim, nb_entries, dtype=torch.float32)
         self.register_buffer("embed", embed)
-        self.register_buffer("cluster_size", torch.zeros(nb_entries))
+        self.register_buffer("cluster_size", torch.zeros(nb_entries, dtype=torch.float32))
         self.register_buffer("embed_avg", embed.clone())
 
+    @torch.cuda.amp.autocast(enabled=False)
     def forward(self, x: torch.FloatTensor) -> Tuple[torch.FloatTensor, float, torch.LongTensor]:
-        x = self.conv_in(x).permute(0,2,3,1)
+        x = self.conv_in(x.float()).permute(0,2,3,1)
         flatten = x.reshape(-1, self.dim)
         dist = (
             flatten.pow(2).sum(1, keepdim=True)

@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=None)
     parser.add_argument('--no-tqdm', action='store_true')
     parser.add_argument('--no-save', action='store_true')
+    parser.add_argument('--no-amp', action='store_true')
     parser.add_argument('--evaluate', action='store_true')
     parser.add_argument('--save-jpg', action='store_true')
     args = parser.parse_args()
@@ -32,7 +33,7 @@ if __name__ == '__main__':
     save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
     print(f"> Initialising VQ-VAE-2 model")
-    trainer = Trainer(cfg, args.cpu)
+    trainer = Trainer(cfg, args)
     print(f"> Number of parameters: {get_parameter_count(trainer.net)}")
 
     if args.load_path:
