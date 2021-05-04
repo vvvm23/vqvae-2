@@ -14,6 +14,7 @@ This project will not only contain the VQ-VAE-2 architecture, but also an exampl
 prior and latent dataset extraction.
 
 ## Usage
+### VQ-VAE-2 Usage
 Run VQ-VAE-2 training using the config `task_name` found in `hps.py`. Defaults to `cifar10`:
 ```
 python main-vqvae.py --task task_name
@@ -32,6 +33,12 @@ Other useful flags:
 --no-tqdm       # disable tqdm status bars
 --save-jpg      # save all images as jpg instead of png, useful for extreme resolutions
 ```
+
+### Discrete Prior Usage
+`TODO: this.`
+
+### Sample Generation 
+`TODO: this.`
 
 ## Modifications
 - Replacing residual layers with ReZero layers.
