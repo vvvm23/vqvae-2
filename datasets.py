@@ -1,7 +1,7 @@
 import torch
 import torchvision
 
-def get_dataset(task: str, cfg, shuffle_test=False):
+def get_dataset(task: str, cfg, shuffle_train=True, shuffle_test=False):
     if task == 'ffhq1024':
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
@@ -52,7 +52,7 @@ def get_dataset(task: str, cfg, shuffle_test=False):
 
     print(f"> Train dataset size: {len(train_dataset)}")
     print(f"> Test dataset size: {len(test_dataset)}")
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=shuffle_train)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=shuffle_test)
 
     return train_loader, test_loader
