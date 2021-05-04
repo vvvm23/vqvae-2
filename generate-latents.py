@@ -74,7 +74,7 @@ if __name__ == '__main__':
     }
 
     print("> Generating latent train dataset")
-    pb = tqdm(train_loader)
+    pb = tqdm(train_loader, disable=args.no_tqdm)
     for x, _ in pb:
         x = x.to(device)
         break
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         # TODO: store result in `latent_dataset`
     
     print("> Generating latent test dataset")
-    pb = tqdm(test_loader)
+    pb = tqdm(test_loader, disable=args.no_tqdm)
     for x, _ in pb:
         x = x.to(device)
         break
