@@ -18,7 +18,7 @@ class Trainer:
 
     def _calculate_loss(self, x: torch.FloatTensor):
         x = x.to(self.device)
-        y, d, _, _ = self.net(x)
+        y, d, _, _, _ = self.net(x)
         r_loss, l_loss = y.sub(x).pow(2).mean(), sum(d)
         loss = r_loss + self.beta*l_loss
         return loss, r_loss, l_loss, y

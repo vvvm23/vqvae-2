@@ -206,6 +206,7 @@ class VQVAE(HelperModule):
         code_outputs = []
         decoder_outputs = []
         upscale_counts = []
+        id_outputs = []
         diffs = []
 
         for enc in self.encoders:
@@ -218,10 +219,11 @@ class VQVAE(HelperModule):
             codebook, decoder = self.codebooks[l], self.decoders[l]
 
             if len(decoder_outputs): # if we have previous levels to condition on
-                code_q, code_d, _ = codebook(torch.cat([encoder_outputs[l], decoder_outputs[-1]], axis=1))
+                code_q, code_d, emb_id = codebook(torch.cat([encoder_outputs[l], decoder_outputs[-1]], axis=1))
             else:
-                code_q, code_d, _ = codebook(encoder_outputs[l])
+                code_q, code_d, emb_id = codebook(encoder_outputs[l])
             diffs.append(code_d)
+            id_outputs.append(emb_id)
 
             code_outputs = [self.upscalers[i](c, upscale_counts[i]) for i, c in enumerate(code_outputs)]
             upscale_counts = [u+1 for u in upscale_counts]
@@ -230,7 +232,7 @@ class VQVAE(HelperModule):
             code_outputs.append(code_q)
             upscale_counts.append(0)
 
-        return decoder_outputs[-1], diffs, encoder_outputs, decoder_outputs
+        return decoder_outputs[-1], diffs, encoder_outputs, decoder_outputs, id_outputs
 
 if __name__ == '__main__':
     from helper import get_parameter_count

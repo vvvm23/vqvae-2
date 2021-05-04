@@ -31,7 +31,7 @@ Other useful flags:
 --cpu           # do not use GPU
 --batch-size    # overrides batch size in cfg.py, useful for evaluating on larger batch size
 --no-tqdm       # disable tqdm status bars
---no-save       # disables saving of files during training
+--no-save       # disables saving of files
 --no-amp        # disables using native AMP (Automatic Mixed Precision) operations
 --save-jpg      # save all images as jpg instead of png, useful for extreme resolutions
 ```
@@ -41,13 +41,14 @@ Run latent dataset generation using VQ-VAE-2 saved at `path` that was trained on
 ```
 python generate-latents.py path --task task_name
 ```
+Result is saved in `latent-data` directory.
 
 Other useful flags:
 ```
 --cpu           # do not use GPU
 --batch-size    # overrides batch size in cfg.py, useful for evaluating on larger batch size
 --no-tqdm       # disable tqdm status bars
---no-save       # disables saving of files during training
+--no-save       # disables saving of files
 --no-amp        # disables using native AMP (Automatic Mixed Precision) operations
 ```
 

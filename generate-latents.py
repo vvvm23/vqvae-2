@@ -75,19 +75,22 @@ if __name__ == '__main__':
 
     print("> Generating latent train dataset")
     pb = tqdm(train_loader, disable=args.no_tqdm)
-    for x, _ in pb:
-        x = x.to(device)
-        break
-        # TODO: obtain discrete latent code from `net` (need a function in `vqvae.py`)
-        # TODO: store result in `latent_dataset`
+    for i, (x, _) in enumerate(pb):
+        with torch.cuda.amp.autocast():
+            x = x.to(device)
+            idx = net(x)[-1][::-1]
+
+        for ci in range(cfg.nb_levels):
+            latent_dataset['train'][ci][i*cfg.batch_size:(i+1)*cfg.batch_size] = idx[ci]
     
     print("> Generating latent test dataset")
     pb = tqdm(test_loader, disable=args.no_tqdm)
-    for x, _ in pb:
-        x = x.to(device)
-        break
-        # TODO: obtain discrete latent code from `net` (need a function in `vqvae.py`)
-        # TODO: store result in codes
+    for i, (x, _) in enumerate(pb):
+        with torch.cuda.amp.autocast():
+            x = x.to(device)
+            idx = net(x)[-1][::-1]
+        for ci in range(cfg.nb_levels):
+            latent_dataset['test'][ci][i*cfg.batch_size:(i+1)*cfg.batch_size] = idx[ci]
 
     if not args.no_save:
         print("> Saving latent dataset to disk")
