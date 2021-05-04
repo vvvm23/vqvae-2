@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import argparse
 import datetime
 import time
+import math
 from tqdm import tqdm
 from pathlib import Path
 
@@ -44,7 +45,50 @@ if __name__ == '__main__':
     if not args.no_save:
         latent_dir = Path(f"latent-data")
         latent_dir.mkdir(exist_ok=True)
+        dataset_path = latent_dir / f"{save_id}-latent-dataset.pt"
 
     print(f"> Loading {cfg.display_name} dataset")
-    train_loader, test_loader = get_dataset(args.task, cfg, shuffle_train=False, shuffle_test=False)
+    (train_loader, test_loader), (train_dataset, test_dataset) = get_dataset(
+        args.task, cfg, 
+        shuffle_train=False, shuffle_test=False,
+        return_dataset=True
+    )
+    train_dataset_len, test_dataset_len = len(train_dataset), len(test_dataset)
+    img_shape = train_dataset[0][0].shape
+    print(f"> Image shape: {list(img_shape)}")
+    spatial_dim = img_shape[-1]
 
+    assert cfg.nb_levels == len(cfg.scaling_rates), "Number of levels does not match number of scaling rates!"
+
+    code_dims = [spatial_dim // math.prod(cfg.scaling_rates[:i+1]) for i in range(cfg.nb_levels)]
+    print(f"> Latent code shapes:")
+    for i, c in enumerate(code_dims):
+        print(f"\tLevel {i+1}: [{c}, {c}]")
+
+    
+    # TODO: Allocating all space into memory at the start. Could run out of memory!
+    print("> Allocating memory to latent datasets")
+    latent_dataset = {
+        'train':    [torch.zeros((train_dataset_len, c, c), dtype=torch.int64) for c in code_dims],
+        'test':     [torch.zeros((test_dataset_len, c, c), dtype=torch.int64) for c in code_dims]
+    }
+
+    print("> Generating latent train dataset")
+    pb = tqdm(train_loader)
+    for x, _ in pb:
+        x = x.to(device)
+        break
+        # TODO: obtain discrete latent code from `net` (need a function in `vqvae.py`)
+        # TODO: store result in `latent_dataset`
+    
+    print("> Generating latent test dataset")
+    pb = tqdm(test_loader)
+    for x, _ in pb:
+        x = x.to(device)
+        break
+        # TODO: obtain discrete latent code from `net` (need a function in `vqvae.py`)
+        # TODO: store result in codes
+
+    if not args.no_save:
+        print("> Saving latent dataset to disk")
+        torch.save(latent_dataset, dataset_path)
