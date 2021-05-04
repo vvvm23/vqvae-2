@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 
+from torchvision.utils import save_image
+
 import argparse
 import datetime
 import time
@@ -76,17 +78,25 @@ if __name__ == '__main__':
     print("> Generating latent train dataset")
     pb = tqdm(train_loader, disable=args.no_tqdm)
     for i, (x, _) in enumerate(pb):
-        with torch.cuda.amp.autocast():
+        with torch.no_grad(), torch.cuda.amp.autocast():
             x = x.to(device)
             idx = net(x)[-1][::-1]
 
         for ci in range(cfg.nb_levels):
             latent_dataset['train'][ci][i*cfg.batch_size:(i+1)*cfg.batch_size] = idx[ci]
+            
+        # if i == 0:
+            # idx = idx[0]
+            # idx = (idx.float() / cfg.nb_entries).unsqueeze(1)
+            # print(idx)
+            # print(idx.shape)
+            # save_image(x, "idx-sample.png", nrow=4, normalize=True, range=(-1,1))
+            # exit()
     
     print("> Generating latent test dataset")
     pb = tqdm(test_loader, disable=args.no_tqdm)
     for i, (x, _) in enumerate(pb):
-        with torch.cuda.amp.autocast():
+        with torch.no_grad(), torch.cuda.amp.autocast():
             x = x.to(device)
             idx = net(x)[-1][::-1]
         for ci in range(cfg.nb_levels):
