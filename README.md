@@ -31,7 +31,24 @@ Other useful flags:
 --cpu           # do not use GPU
 --batch-size    # overrides batch size in cfg.py, useful for evaluating on larger batch size
 --no-tqdm       # disable tqdm status bars
+--no-save       # disables saving of files during training
+--no-amp        # disables using native AMP (Automatic Mixed Precision) operations
 --save-jpg      # save all images as jpg instead of png, useful for extreme resolutions
+```
+
+### Latent Dataset Generation
+Run latent dataset generation using VQ-VAE-2 saved at `path` that was trained on task `task_name`. Defaults to `cifar10`:
+```
+python generate-latents.py path --task task_name
+```
+
+Other useful flags:
+```
+--cpu           # do not use GPU
+--batch-size    # overrides batch size in cfg.py, useful for evaluating on larger batch size
+--no-tqdm       # disable tqdm status bars
+--no-save       # disables saving of files during training
+--no-amp        # disables using native AMP (Automatic Mixed Precision) operations
 ```
 
 ### Discrete Prior Usage
