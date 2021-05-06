@@ -50,7 +50,7 @@ if __name__ == '__main__':
         file_name = f"./recon-{save_id}-eval.{'jpg' if args.save_jpg else 'png'}"
         for x, _ in test_loader:
             *_, y = trainer.eval(x)
-            save_image(y, file_name, nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
+            save_image(y, file_name, nrow=int(sqrt(cfg.mini_batch_size)), normalize=True, value_range=(-1,1))
             break
         print(f"> Saved to {file_name}")
         exit()
@@ -93,7 +93,7 @@ if __name__ == '__main__':
             epoch_l_loss += l_loss
             pb.set_description(f"evaluation: {epoch_loss / (i+1)} [r_loss: {epoch_r_loss/ (i+1)}, l_loss: {epoch_l_loss / (i+1)}]")
             if i == 0 and not args.no_save and eid % cfg.image_frequency == 0:
-                save_image(y, img_dir / f"recon-{str(eid).zfill(4)}.{'jpg' if args.save_jpg else 'png'}", nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
+                save_image(y, img_dir / f"recon-{str(eid).zfill(4)}.{'jpg' if args.save_jpg else 'png'}", nrow=int(sqrt(cfg.mini_batch_size)), normalize=True, value_range=(-1,1))
 
         if eid % cfg.checkpoint_frequency == 0 and not args.no_save:
             trainer.save_checkpoint(chk_dir / f"{args.task}-state-dict-{str(eid).zfill(4)}.pt")

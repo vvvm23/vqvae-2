@@ -131,4 +131,7 @@ dmypy.json
 # ADDITIONS START FROM HERE
 data/
 samples/
+misc/
 runs/
+latent-data/
+*.jpg

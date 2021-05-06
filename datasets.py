@@ -52,8 +52,8 @@ def get_dataset(task: str, cfg, shuffle_train=True, shuffle_test=False, return_d
 
     print(f"> Train dataset size: {len(train_dataset)}")
     print(f"> Test dataset size: {len(test_dataset)}")
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=shuffle_train)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.batch_size, num_workers=cfg.nb_workers, shuffle=shuffle_test)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=shuffle_train)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=shuffle_test)
     
     if return_dataset:
         return (train_loader, test_loader), (train_dataset, test_dataset)
