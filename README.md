@@ -73,9 +73,9 @@ Other useful flags:
 - [X] Server mode (no fancy printing)
 - [X] Experiment directories (containing logs / checkpoints / etc)
 - [ ] Output logging
-- [ ] Accumulated gradient training (for larger batch sizes on limited resources)
-- [ ] Learning rate schedulers
+- [X] Accumulated gradient training (for larger batch sizes on limited resources)
 - [X] Samples and checkpoints on FFHQ1024
+- [X] Latent dataset generation
 - [ ] Autoregressive prior models / training scripts
 - [ ] Full system sampling
 
