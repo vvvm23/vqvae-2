@@ -1,7 +1,7 @@
 """
     Directly taken from https://github.com/rosinality/vq-vae-2-pytorch/blob/master/pixelsnail.py
 """
-from math import sqrt
+from math import sqrt, prod
 from functools import partial, lru_cache
 
 import numpy as np
@@ -289,6 +289,8 @@ class PixelSNAIL(HelperModule):
         nb_res_channel=256,
         attention=True,
         dropout=0.1,
+        nb_cond=0,
+        scaling_rates=[],
         nb_cond_res_block=0,
         nb_cond_res_channel=0,
         cond_res_kernel=3,
@@ -297,6 +299,8 @@ class PixelSNAIL(HelperModule):
         height, width = shape
 
         self.nb_entries = nb_entries
+        self.nb_cond = nb_cond
+        self.scaling_rates = scaling_rates
 
         if kernel_size % 2 == 0:
             kernel = kernel_size + 1
@@ -332,9 +336,19 @@ class PixelSNAIL(HelperModule):
                 )
             )
 
-        if nb_cond_res_block > 0:
-            self.cond_resnet = CondResNet(
-                nb_entries, nb_cond_res_channel, cond_res_kernel, nb_cond_res_block
+        # if nb_cond_res_block > 0:
+        if nb_cond > 0:
+            self.cond_nets = nn.ModuleList()
+            for _ in range(nb_cond):
+                self.cond_nets.append(CondResNet(
+                    nb_entries, nb_cond_res_channel, cond_res_kernel, nb_cond_res_block
+                ))
+            # self.cond_resnet = CondResNet(
+                # nb_entries, nb_cond_res_channel, cond_res_kernel, nb_cond_res_block
+            # )
+            self.cond_out = nn.Sequential(
+                WNConv2d(nb_cond_res_channel*nb_cond, nb_cond_res_channel, cond_res_kernel, padding=1),
+                nn.ELU(),
             )
 
         out = []
@@ -346,7 +360,8 @@ class PixelSNAIL(HelperModule):
 
         self.out = nn.Sequential(*out)
 
-    def forward(self, x, condition=None, cache=None):
+    def forward(self, x, *condition, cache=None):
+        assert len(condition) == self.nb_cond, "Expected {self.nb_cond} conditions! Got {len(condition)}!"
         if cache is None:
             cache = {}
         batch, height, width = x.shape
@@ -359,21 +374,34 @@ class PixelSNAIL(HelperModule):
 
         background = self.background[:, :, :height, :].expand(batch, 2, height, width)
 
-        if condition is not None:
+        # if condition is not None:
+        if len(condition) > 0:
             if 'condition' in cache:
                 condition = cache['condition']
                 condition = condition[:, :, :height, :]
 
             else:
-                condition = (
-                    F.one_hot(condition, self.nb_entries)
-                    .permute(0, 3, 1, 2)
-                    .type_as(self.background)
-                )
-                condition = self.cond_resnet(condition)
-                condition = F.interpolate(condition, scale_factor=2)
+                cx = []
+                for i, c in enumerate(condition):
+                    c = F.one_hot(c, self.nb_entries).permute(0, 3, 1, 2).type_as(self.background)
+                    c = self.cond_nets[i](c)
+                    c = F.interpolate(c, scale_factor=prod(self.scaling_rates[:i+1]))
+                    cx.append(c)
+
+                condition = self.cond_out(torch.cat(cx, dim=1))
                 cache['condition'] = condition.detach().clone()
                 condition = condition[:, :, :height, :]
+
+                # condition = (
+                    # F.one_hot(condition, self.nb_entries)
+                    # .permute(0, 3, 1, 2)
+                    # .type_as(self.background)
+                # )
+                # condition = self.cond_resnet(condition)
+                # condition = F.interpolate(condition, scale_factor=2)
+                # cache['condition'] = condition.detach().clone() condition = condition[:, :, :height, :]
+        else:
+            condition = None
 
         for block in self.blocks:
             out = block(out, background, condition=condition)
@@ -391,11 +419,17 @@ if __name__ == '__main__':
         nb_block=2,
         nb_res_block=2,
         nb_res_channel=128,
+        nb_cond=2,
+        scaling_rates=[2,4],
+        nb_cond_res_block=2,
+        nb_cond_res_channel=128,
     ).to(device)
 
     with torch.no_grad(), torch.cuda.amp.autocast():
         x = torch.randint(0, 256, (1, 32, 32)).to(device)
-        l, _ = net(x)
+        c1 = torch.randint(0, 256, (1, 16, 16))
+        c2 = torch.randint(0, 256, (1, 4, 4))
+        l, _ = net(x, c1, c2)
     print(l.shape, l.dtype)
     
     p = torch.softmax(l, dim=1)
