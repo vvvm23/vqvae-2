@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import math
 
 from vqvae import VQVAE
@@ -57,7 +58,7 @@ class VQVAETrainer:
     @torch.no_grad()
     def eval(self, x: torch.FloatTensor):
         self.net.eval()
-        self.opt.zero_grad()
+        # self.opt.zero_grad()
         loss, r_loss, l_loss, y = self._calculate_loss(x)
         return loss.item(), r_loss.item(), l_loss.item(), y
 
@@ -70,18 +71,48 @@ class VQVAETrainer:
 class PixelTrainer:
     def __init__(self, cfg, args):
         self.device = get_device(args.cpu)
+        # TODO: load cfg
+        self.net = PixelSNAIL((32, 32), 256).to(self.device)
+        self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
+        self.opt.zero_grad()
+        
+        self.scaler = torch.cuda.amp.GradScaler(enabled=not args.no_amp)
 
-    def _calculate_loss(self):
-        pass
+        self.update_frequency = math.ceil(cfg.batch_size / cfg.mini_batch_size)
+        self.train_steps = 0
+
+    @torch.cuda.amp.autocast()
+    def _calculate_loss(self, x: torch.LongTensor, *conditions):
+        x = x.to(self.device)
+        y, _ = self.net(x)
+        loss = F.cross_entropy(y, x)
+
+        y_max = torch.argmax(y, dim=1)
+        accuracy = (y_max == x) / torch.numel(x)
+
+        return loss, accuracy
 
     def _update_parameters(self):
-        pass
+        self.scaler.step(self.opt)
+        self.opt.zero_grad()
+        self.scaler.update()
+    
+    def train_step(self, x: torch.LongTensor):
+        self.net.train()
+        loss, accuracy = self._calculate_loss(x)
+        self.scaler.scale(loss / self.update_frequency).backward()
 
-    def train_step(self):
-        pass
+        self.train_steps += 1
+        if self.train_steps % self.update_frequency == 0:
+            self._update_parameters()
 
-    def eval_step(self):
-        pass
+        return loss.item(), accuracy.item()
+
+    @torch.no_grad()
+    def eval_step(self, x: torch.LongTensor):
+        self.net.eval()
+        loss, accuracy = self._calculate_loss(x)
+        return loss.item(), accuracy.item()
 
     def save_checkpoint(self, path):
         torch.save(self.net.state_dict(), path)
