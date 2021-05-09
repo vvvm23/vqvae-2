@@ -56,4 +56,31 @@ if __name__ == '__main__':
         log_dir.mkdir(exist_ok=True)
 
     # TODO: get latent dataset
+
     # TODO: train-eval loop over tandem latent dataset (level0, level1, ..., levelN)
+    for eid in range(cfg.max_epochs):
+        print(f"> Epoch {eid+1}/{cfg.max_epochs}:")
+        epoch_loss, epoch_accuracy = 0.0, 0.0
+        epoch_start_time = time.time()
+
+        pb = tqdm(train_loader, disable=args.no_tqdm)
+        for i, (x, *c) in enumerate(pb):
+            loss, accuracy = trainer.train_step()
+            epoch_loss += loss
+            epoch_accuracy += accuracy
+            pb.set_description(f"training loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")
+        print(f"> Training loss: {epoch_loss / len(train_loader)} | accuracy: {100.0 * epoch_accuracy / len(train_loader)}%")
+
+        pb = tqdm(test_loader, disable=args.no_tqdm)
+        for i, (x, *c) in enumerate(pb):
+            loss, accuracy = trainer.eval_step()
+            epoch_loss += loss
+            epoch_accuracy += accuracy
+            pb.set_description(f"evaluation loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")
+        print(f"> Evaluation loss: {epoch_loss / len(test_loader)} | accuracy: {100.0 * epoch_accuracy / len(test_loader)}%")
+
+        if eid % cfg.checkpoint_frequency == 0 and not args.no_save:
+            trainer.save_checkpoint(chk_dir / f"pixelsnail-{args.level}-{args.task}-state-dict-{str(eid).zfill(4)}.pt")
+
+        print(f"> Epoch time taken: {time.time() - epoch_start_time:.2f} seconds.")
+        print()
