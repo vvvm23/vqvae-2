@@ -2,9 +2,10 @@ import torch
 import math
 
 from vqvae import VQVAE
+from pixelsnail import PixelSNAIL
 from helper import get_device
 
-class Trainer:
+class VQVAETrainer:
     def __init__(self, cfg, args):
         self.device = get_device(args.cpu)
         self.net = VQVAE(in_channels=cfg.in_channels, 
@@ -59,6 +60,28 @@ class Trainer:
         self.opt.zero_grad()
         loss, r_loss, l_loss, y = self._calculate_loss(x)
         return loss.item(), r_loss.item(), l_loss.item(), y
+
+    def save_checkpoint(self, path):
+        torch.save(self.net.state_dict(), path)
+
+    def load_checkpoint(self, path):
+        self.net.load_state_dict(torch.load(path))
+
+class PixelTrainer:
+    def __init__(self, cfg, args):
+        self.device = get_device(args.cpu)
+
+    def _calculate_loss(self):
+        pass
+
+    def _update_parameters(self):
+        pass
+
+    def train_step(self):
+        pass
+
+    def eval_step(self):
+        pass
 
     def save_checkpoint(self, path):
         torch.save(self.net.state_dict(), path)

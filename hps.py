@@ -38,9 +38,9 @@ _ffhq256 = {
     'nb_levels':                2,
     'scaling_rates':            [4, 2],
 
-    'learning_rate':            1e-4,
+    'learning_rate':            3e-3,
     'beta':                     0.25,
-    'batch_size':               32,
+    'batch_size':               4096,
     'mini_batch_size':          32,
     'max_epochs':               100,
 }
@@ -77,7 +77,7 @@ _cifar10 = {
 
     'learning_rate':            1e-3,
     'beta':                     0.25,
-    'batch_size':               8192,
+    'batch_size':               128,
     'mini_batch_size':          128,
     'max_epochs':               100,
 }

@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from math import sqrt
 
-from trainer import Trainer
+from trainer import VQVAETrainer
 from datasets import get_dataset
 from hps import HPS
 from helper import get_device, get_parameter_count
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
     print(f"> Initialising VQ-VAE-2 model")
-    trainer = Trainer(cfg, args)
+    trainer = VQVAETrainer(cfg, args)
     print(f"> Number of parameters: {get_parameter_count(trainer.net)}")
 
     if args.load_path:
