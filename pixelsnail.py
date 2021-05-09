@@ -1,5 +1,9 @@
 """
-    Directly taken from https://github.com/rosinality/vq-vae-2-pytorch/blob/master/pixelsnail.py
+    Based heavily off this implementation: https://github.com/rosinality/vq-vae-2-pytorch/blob/master/pixelsnail.py
+
+    Changes:
+        - Some naming conventions are changed (don't use input as a variable!!!)
+        - support for $n$ conditioning variables.
 """
 from math import sqrt, prod
 from functools import partial, lru_cache
@@ -420,7 +424,7 @@ if __name__ == '__main__':
         nb_res_block=2,
         nb_res_channel=128,
         nb_cond=2,
-        scaling_rates=[2,4],
+        scaling_rates=[2, 4],
         nb_cond_res_block=2,
         nb_cond_res_channel=128,
     ).to(device)
