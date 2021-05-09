@@ -9,11 +9,13 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from helper import HelperModule
+
 def wn_linear(in_dim, out_dim):
     return nn.utils.weight_norm(nn.Linear(in_dim, out_dim))
 
-class WNConv2d(nn.Module):
-    def __init__(
+class WNConv2d(HelperModule):
+    def build(
         self,
         in_channel,
         out_channel,
@@ -23,7 +25,6 @@ class WNConv2d(nn.Module):
         bias=True,
         activation=None,
     ):
-        super().__init__()
         self.conv = nn.utils.weight_norm(
             nn.Conv2d(
                 in_channel,
@@ -52,8 +53,8 @@ def shift_down(x, size=1):
 def shift_right(x, size=1):
     return F.pad(x, [size, 0, 0, 0])[:, :, :, : x.shape[3]]
 
-class CausalConv2d(nn.Module):
-    def __init__(
+class CausalConv2d(HelperModule):
+    def build(
         self,
         in_channel,
         out_channel,
@@ -62,7 +63,6 @@ class CausalConv2d(nn.Module):
         padding='downright',
         activation=None,
     ):
-        super().__init__()
         if isinstance(kernel_size, int):
             kernel_size = [kernel_size] * 2
         self.kernel_size = kernel_size
@@ -95,8 +95,8 @@ class CausalConv2d(nn.Module):
         return out
 
 
-class GatedResBlock(nn.Module):
-    def __init__(
+class GatedResBlock(HelperModule):
+    def build(
         self,
         in_channel,
         channel,
@@ -107,7 +107,6 @@ class GatedResBlock(nn.Module):
         auxiliary_channel=0,
         condition_dim=0,
     ):
-        super().__init__()
         if conv == 'wnconv2d':
             conv_module = partial(WNConv2d, padding=kernel_size // 2)
         elif conv == 'causal_downright':
@@ -160,9 +159,8 @@ def causal_mask(size):
         torch.from_numpy(start_mask).unsqueeze(1),
     )
 
-class CausalAttention(nn.Module):
-    def __init__(self, query_channel, key_channel, channel, n_head=8, dropout=0.1):
-        super().__init__()
+class CausalAttention(HelperModule):
+    def build(self, query_channel, key_channel, channel, n_head=8, dropout=0.1):
 
         self.query = wn_linear(query_channel, channel)
         self.key = wn_linear(key_channel, channel)
@@ -201,20 +199,19 @@ class CausalAttention(nn.Module):
 
         return out
 
-class PixelBlock(nn.Module):
-    def __init__(
+class PixelBlock(HelperModule):
+    def build(
         self,
         in_channel,
         channel,
         kernel_size,
-        n_res_block,
+        nb_res_block,
         attention=True,
         dropout=0.1,
         condition_dim=0,
     ):
-        super().__init__()
         resblocks = []
-        for i in range(n_res_block):
+        for i in range(nb_res_block):
             resblocks.append(
                 GatedResBlock(
                     in_channel,
@@ -270,38 +267,36 @@ class PixelBlock(nn.Module):
         return out
 
 
-class CondResNet(nn.Module):
-    def __init__(self, in_channel, channel, kernel_size, n_res_block):
-        super().__init__()
+class CondResNet(HelperModule):
+    def build(self, in_channel, channel, kernel_size, nb_res_block):
         blocks = [WNConv2d(in_channel, channel, kernel_size, padding=kernel_size // 2)]
-        for i in range(n_res_block):
+        for i in range(nb_res_block):
             blocks.append(GatedResBlock(channel, channel, kernel_size))
         self.blocks = nn.Sequential(*blocks)
 
     def forward(self, x):
         return self.blocks(x)
 
-class PixelSNAIL(nn.Module):
-    def __init__(
+class PixelSNAIL(HelperModule):
+    def build(
         self,
         shape,
-        n_class,
-        channel,
-        kernel_size,
-        n_block,
-        n_res_block,
-        res_channel,
+        nb_entries,
+        channel=256,
+        kernel_size=5,
+        nb_block=4,
+        nb_res_block=4,
+        nb_res_channel=256,
         attention=True,
         dropout=0.1,
-        n_cond_res_block=0,
-        cond_res_channel=0,
+        nb_cond_res_block=0,
+        nb_cond_res_channel=0,
         cond_res_kernel=3,
-        n_out_res_block=0,
+        nb_out_res_block=0,
     ):
-        super().__init__()
         height, width = shape
 
-        self.n_class = n_class
+        self.nb_entries = nb_entries
 
         if kernel_size % 2 == 0:
             kernel = kernel_size + 1
@@ -310,10 +305,10 @@ class PixelSNAIL(nn.Module):
             kernel = kernel_size
 
         self.horizontal = CausalConv2d(
-            n_class, channel, [kernel // 2, kernel], padding='down'
+            nb_entries, channel, [kernel // 2, kernel], padding='down'
         )
         self.vertical = CausalConv2d(
-            n_class, channel, [(kernel + 1) // 2, kernel // 2], padding='downright'
+            nb_entries, channel, [(kernel + 1) // 2, kernel // 2], padding='downright'
         )
 
         coord_x = (torch.arange(height).float() - height / 2) / height
@@ -324,30 +319,30 @@ class PixelSNAIL(nn.Module):
 
         self.blocks = nn.ModuleList()
 
-        for i in range(n_block):
+        for i in range(nb_block):
             self.blocks.append(
                 PixelBlock(
                     channel,
-                    res_channel,
+                    nb_res_channel,
                     kernel_size,
-                    n_res_block,
+                    nb_res_block,
                     attention=attention,
                     dropout=dropout,
-                    condition_dim=cond_res_channel,
+                    condition_dim=nb_cond_res_channel,
                 )
             )
 
-        if n_cond_res_block > 0:
+        if nb_cond_res_block > 0:
             self.cond_resnet = CondResNet(
-                n_class, cond_res_channel, cond_res_kernel, n_cond_res_block
+                nb_entries, nb_cond_res_channel, cond_res_kernel, nb_cond_res_block
             )
 
         out = []
 
-        for i in range(n_out_res_block):
-            out.append(GatedResBlock(channel, res_channel, 1))
+        for i in range(nb_out_res_block):
+            out.append(GatedResBlock(channel, nb_res_channel, 1))
 
-        out.extend([nn.ELU(inplace=True), WNConv2d(channel, n_class, 1)])
+        out.extend([nn.ELU(inplace=True), WNConv2d(channel, nb_entries, 1)])
 
         self.out = nn.Sequential(*out)
 
@@ -356,7 +351,7 @@ class PixelSNAIL(nn.Module):
             cache = {}
         batch, height, width = x.shape
         x = (
-            F.one_hot(x, self.n_class).permute(0, 3, 1, 2).type_as(self.background)
+            F.one_hot(x, self.nb_entries).permute(0, 3, 1, 2).type_as(self.background)
         )
         horizontal = shift_down(self.horizontal(x))
         vertical = shift_right(self.vertical(x))
@@ -371,7 +366,7 @@ class PixelSNAIL(nn.Module):
 
             else:
                 condition = (
-                    F.one_hot(condition, self.n_class)
+                    F.one_hot(condition, self.nb_entries)
                     .permute(0, 3, 1, 2)
                     .type_as(self.background)
                 )
@@ -390,12 +385,12 @@ if __name__ == '__main__':
     device = torch.device('cuda')
     net = PixelSNAIL(
         shape=(32,32),
-        n_class=256,
+        nb_entries=256,
         channel=128,
         kernel_size=5,
-        n_block=2,
-        n_res_block=2,
-        res_channel=128,
+        nb_block=2,
+        nb_res_block=2,
+        nb_res_channel=128,
     ).to(device)
 
     with torch.no_grad(), torch.cuda.amp.autocast():
