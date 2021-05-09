@@ -82,9 +82,9 @@ class PixelTrainer:
         self.train_steps = 0
 
     @torch.cuda.amp.autocast()
-    def _calculate_loss(self, x: torch.LongTensor, *conditions):
+    def _calculate_loss(self, x: torch.LongTensor, *condition):
         x = x.to(self.device)
-        y, _ = self.net(x)
+        y, _ = self.net(x, *condition)
         loss = F.cross_entropy(y, x)
 
         y_max = torch.argmax(y, dim=1)
@@ -97,9 +97,9 @@ class PixelTrainer:
         self.opt.zero_grad()
         self.scaler.update()
     
-    def train_step(self, x: torch.LongTensor):
+    def train_step(self, x: torch.LongTensor, *condition):
         self.net.train()
-        loss, accuracy = self._calculate_loss(x)
+        loss, accuracy = self._calculate_loss(x, *condition)
         self.scaler.scale(loss / self.update_frequency).backward()
 
         self.train_steps += 1
@@ -109,9 +109,9 @@ class PixelTrainer:
         return loss.item(), accuracy.item()
 
     @torch.no_grad()
-    def eval_step(self, x: torch.LongTensor):
+    def eval_step(self, x: torch.LongTensor, *condition):
         self.net.eval()
-        loss, accuracy = self._calculate_loss(x)
+        loss, accuracy = self._calculate_loss(x, *condition)
         return loss.item(), accuracy.item()
 
     def save_checkpoint(self, path):
