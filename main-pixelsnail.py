@@ -12,6 +12,7 @@ from pathlib import Path
 from trainer import PixelTrainer
 from hps import HPS
 from helper import get_device, get_parameter_count
+from datasets import LatentDataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -55,7 +56,11 @@ if __name__ == '__main__':
         img_dir.mkdir(exist_ok=True)
         log_dir.mkdir(exist_ok=True)
 
-    # TODO: get latent dataset
+    dataset = torch.load(args.dataset_path)
+    train_dataset, test_dataset = dataset['train'], dataset['test']
+    train_dataset, test_dataset = LatentDataset(train_dataset), LatentDataset(test_dataset)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=False)
 
     # TODO: train-eval loop over tandem latent dataset (level0, level1, ..., levelN)
     for eid in range(cfg.max_epochs):
@@ -65,7 +70,7 @@ if __name__ == '__main__':
 
         pb = tqdm(train_loader, disable=args.no_tqdm)
         for i, (x, *c) in enumerate(pb):
-            loss, accuracy = trainer.train_step()
+            loss, accuracy = trainer.train_step(x, *c)
             epoch_loss += loss
             epoch_accuracy += accuracy
             pb.set_description(f"training loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")
@@ -73,7 +78,7 @@ if __name__ == '__main__':
 
         pb = tqdm(test_loader, disable=args.no_tqdm)
         for i, (x, *c) in enumerate(pb):
-            loss, accuracy = trainer.eval_step()
+            loss, accuracy = trainer.eval_step(x, *c)
             epoch_loss += loss
             epoch_accuracy += accuracy
             pb.set_description(f"evaluation loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")
