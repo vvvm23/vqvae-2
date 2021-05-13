@@ -149,7 +149,7 @@ _cifar10 = {
     'nb_entries':                   512,
 
     'level': [
-        {
+        SimpleNamespace(**{
             'channel':              256,
             'kernel_size':          5,
             'nb_block':             4,
@@ -159,8 +159,8 @@ _cifar10 = {
             'dropout':              0.1,
 
             'nb_out_res_block':     0,
-        },
-        {
+        }),
+        SimpleNamespace(**{
             'channel':              256,
             'kernel_size':          5,
             'nb_block':             4,
@@ -173,7 +173,7 @@ _cifar10 = {
             'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
-        },
+        }),
     ]
 }
 

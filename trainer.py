@@ -76,15 +76,23 @@ class PixelTrainer:
         lcfg = cfg.level[args.level]
 
         self.net = PixelSNAIL(
-            shape =             cfg.code_shape,
-            nb_entries =        cfg.nb_entries,
-            channel =           lcfg.channel,
-            kernel_size =       lcfg.kernel_size,
-            nb_block =          lcfg.nb_block,
-            nb_res_block =      lcfg.nb_res_block,
-            nb_res_channel =    lcfg.nb_res_channel,
-            attention =         lcfg.attention,
-            dropout =           lcfg.dropout
+            shape =                 cfg.code_shape,
+            nb_entries =            cfg.nb_entries,
+            channel =               lcfg.channel,
+            kernel_size =           lcfg.kernel_size,
+            nb_block =              lcfg.nb_block,
+            nb_res_block =          lcfg.nb_res_block,
+            nb_res_channel =        lcfg.nb_res_channel,
+            attention =             lcfg.attention,
+            dropout =               lcfg.dropout,
+
+            # TODO: Figure out correct nb_cond and scaling_rate based on args.level
+            nb_cond =               args.level,
+            scaling_rates =         [],
+            nb_cond_res_block =     lcfg.nb_cond_res_block if nb_cond else 0,
+            nb_cond_res_channel =   lcfg.nb_cond_res_channel if nb_cond else 0,
+
+            nb_out_res_block =      lcfg.nb_out_res_block,
         )
         self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
         self.opt.zero_grad()
