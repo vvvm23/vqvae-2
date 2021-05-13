@@ -300,6 +300,7 @@ class PixelSNAIL(HelperModule):
         cond_res_kernel=3,
         nb_out_res_block=0,
     ):
+        self.shape = shape
         height, width = shape
 
         self.nb_entries = nb_entries

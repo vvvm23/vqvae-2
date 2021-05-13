@@ -145,6 +145,12 @@ _common = {
 
 _cifar10 = {
     'display_name':                 'CIFAR10',
+
+    'batch_size':                   512,
+    'mini_batch_size':              64,
+    'learning_rate':                1e-4,
+    'max_epochs':                   100,
+
     'scaling_rates':                [2, 2],
     'nb_entries':                   512,
 
@@ -157,6 +163,9 @@ _cifar10 = {
             'nb_res_channel':       256,
             'attention':            True,
             'dropout':              0.1,
+            
+            'nb_cond_res_block':    3,
+            'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
         }),
@@ -168,9 +177,6 @@ _cifar10 = {
             'nb_res_channel':       256,
             'attention':            True,
             'dropout':              0.1,
-            
-            'nb_cond_res_block':    3,
-            'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
         }),
