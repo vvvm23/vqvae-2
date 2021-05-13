@@ -1,4 +1,5 @@
 import torch
+
 import torchvision
 
 def get_dataset(task: str, cfg, shuffle_train=True, shuffle_test=False, return_dataset=False):
@@ -71,3 +72,6 @@ class LatentDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         return [l[idx] for l in self.data]
+
+    def get_shape(self, level):
+        return self.data[level].shape[1:]

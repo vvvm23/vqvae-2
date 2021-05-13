@@ -71,8 +71,21 @@ class VQVAETrainer:
 class PixelTrainer:
     def __init__(self, cfg, args):
         self.device = get_device(args.cpu)
-        # TODO: load cfg
-        self.net = PixelSNAIL((32, 32), 256).to(self.device)
+        # self.net = PixelSNAIL((32, 32), 256).to(self.device)
+
+        lcfg = cfg.level[args.level]
+
+        self.net = PixelSNAIL(
+            shape =             cfg.code_shape,
+            nb_entries =        cfg.nb_entries,
+            channel =           lcfg.channel,
+            kernel_size =       lcfg.kernel_size,
+            nb_block =          lcfg.nb_block,
+            nb_res_block =      lcfg.nb_res_block,
+            nb_res_channel =    lcfg.nb_res_channel,
+            attention =         lcfg.attention,
+            dropout =           lcfg.dropout
+        )
         self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
         self.opt.zero_grad()
         

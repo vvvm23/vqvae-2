@@ -17,6 +17,7 @@ from datasets import LatentDataset
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_path', type=str)
+    parser.add_argument('level', type=int)
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--task', type=str, default='cifar10')
     parser.add_argument('--load-path', type=str, default=None)
@@ -30,16 +31,9 @@ if __name__ == '__main__':
     parser.add_argument('--level', action='store_true')
     args = parser.parse_args()
 
-    # TODO: retrieve based on task and prior level
     cfg = HPS[args.task]
 
     save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-    trainer = PixelTrainer(cfg, args)
-
-    if args.load_path:
-        print(f"> Loading model parameters from checkpoint")
-        trainer.load_checkpoint(args.load_path)
-
     if args.batch_size:
         cfg.batch_size = args.batch_size
 
@@ -59,8 +53,20 @@ if __name__ == '__main__':
     dataset = torch.load(args.dataset_path)
     train_dataset, test_dataset = dataset['train'], dataset['test']
     train_dataset, test_dataset = LatentDataset(train_dataset), LatentDataset(test_dataset)
+
+    cfg.code_shape = train_dataset.get_shape(args.level)
+
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=False)
+
+
+
+    trainer = PixelTrainer(cfg, args)
+
+    if args.load_path:
+        print(f"> Loading model parameters from checkpoint")
+        trainer.load_checkpoint(args.load_path)
+
 
     # TODO: train-eval loop over tandem latent dataset (level0, level1, ..., levelN)
     for eid in range(cfg.max_epochs):

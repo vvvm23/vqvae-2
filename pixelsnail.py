@@ -340,16 +340,12 @@ class PixelSNAIL(HelperModule):
                 )
             )
 
-        # if nb_cond_res_block > 0:
         if nb_cond > 0:
             self.cond_nets = nn.ModuleList()
             for _ in range(nb_cond):
                 self.cond_nets.append(CondResNet(
                     nb_entries, nb_cond_res_channel, cond_res_kernel, nb_cond_res_block
                 ))
-            # self.cond_resnet = CondResNet(
-                # nb_entries, nb_cond_res_channel, cond_res_kernel, nb_cond_res_block
-            # )
             self.cond_out = nn.Sequential(
                 WNConv2d(nb_cond_res_channel*nb_cond, nb_cond_res_channel, cond_res_kernel, padding=1),
                 nn.ELU(),
