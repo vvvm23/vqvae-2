@@ -13,7 +13,7 @@ from math import sqrt
 
 from trainer import VQVAETrainer
 from datasets import get_dataset
-from hps import HPS
+from hps import HPS_VQVAE as HPS
 from helper import get_device, get_parameter_count
 
 if __name__ == '__main__':

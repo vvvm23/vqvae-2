@@ -1,5 +1,8 @@
 from types import SimpleNamespace
 
+"""
+    -- VQ-VAE-2 Hyperparameters --
+"""
 _common = {
     'checkpoint_frequency':         5,
     'image_frequency':              1,
@@ -120,11 +123,60 @@ _kmnist = {
     'max_epochs':               100,
 }
 
-HPS = {
+HPS_VQVAE = {
     'ffhq1024':     SimpleNamespace(**(_common | _ffhq1024)),
     'ffhq256':      SimpleNamespace(**(_common | _ffhq256)),
     'ffhq128':      SimpleNamespace(**(_common | _ffhq128)),
     'cifar10':      SimpleNamespace(**(_common | _cifar10)),
     'mnist':        SimpleNamespace(**(_common | _mnist)),
     'kmnist':       SimpleNamespace(**(_common | _kmnist)),
+}
+
+"""
+    -- PixelSnail Hyperparameters --
+    TODO: check if shared task names overwrites!
+"""
+
+_common = {
+    'checkpoint_frequency':     5,
+    'image_frequency':          1,
+    'nb_workers':               8,
+}
+
+_cifar10 = {
+    'display_name':                 'CIFAR10',
+    'scaling_rates':                [2, 2],
+    'nb_entries':                   512,
+
+    'level': [
+        {
+            'channel':              256,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            True,
+            'dropout':              0.1,
+
+            'nb_out_res_block':     0,
+        },
+        {
+            'channel':              256,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            True,
+            'dropout':              0.1,
+            
+            'nb_cond_res_block':    3,
+            'nb_cond_res_channel':  256,
+
+            'nb_out_res_block':     0,
+        },
+    ]
+}
+
+HPS_PIXEL = {
+    'cifar10':      SimpleNamespace(**(_common | _cifar10))
 }

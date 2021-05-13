@@ -10,7 +10,7 @@ from tqdm import tqdm
 from pathlib import Path
 
 from trainer import PixelTrainer
-from hps import HPS
+from hps import HPS_PIXEL as HPS
 from helper import get_device, get_parameter_count
 from datasets import LatentDataset
 
