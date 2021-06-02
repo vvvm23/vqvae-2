@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import math
 
 from vqvae import VQVAE
-from pixelsnail import PixelSNAIL
+from pixelsnail import PixelSnail
 from helper import get_device
 
 class VQVAETrainer:

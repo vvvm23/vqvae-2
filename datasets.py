@@ -3,7 +3,7 @@ import torch
 import torchvision
 
 def get_dataset(task: str, cfg, shuffle_train=True, shuffle_test=False, return_dataset=False):
-    if task == 'ffhq1024':
+    if task in ['ffhq1024','ffhq1024-large']:
         transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
