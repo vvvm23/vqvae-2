@@ -166,7 +166,21 @@ class CondResNet(HelperModule):
         return self.blocks(x)
 
 class PixelSnail(nn.Module):
-    def __init__(self, shape, nb_class, channel, kernel_size, nb_pixel_block, nb_res_block, res_channel, dropout=0.1, nb_cond_res_block=0, cond_res_channel=0, cond_res_kernel=3, nb_out_res_block=0):
+    def __init__(self, 
+            shape, 
+            nb_class, 
+            channel, 
+            kernel_size, 
+            nb_pixel_block, 
+            nb_res_block, 
+            res_channel, 
+            dropout = 0.1, 
+            nb_cond = 0,
+            nb_cond_res_block = 0, 
+            cond_res_channel = 0, 
+            cond_res_kernel = 3, 
+            nb_out_res_block = 0,
+        ):
         super().__init__()
         height, width = shape
         self.nb_class = nb_class
@@ -184,7 +198,7 @@ class PixelSnail(nn.Module):
 
         self.blks = nn.ModuleList([PixelBlock(channel, res_channel, kernel_size, nb_res_block, dropout=dropout, condition_dim=cond_res_channel) for _ in range(nb_pixel_block)])
         
-        if nb_cond_res_block > 0:
+        if nb_cond > 0:
             cond_net = [WNConv2d(nb_class, cond_res_channel, cond_res_kernel, padding=cond_res_kernel // 2)]
             cond_net.extend([GatedResBlock(cond_res_channel, cond_res_channel, cond_res_kernel) for _ in range(nb_cond_res_block)])
             self.cond_net = nn.Sequential(*cond_net)

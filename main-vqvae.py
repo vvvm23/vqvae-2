@@ -48,10 +48,18 @@ if __name__ == '__main__':
         _, test_loader = get_dataset(args.task, cfg, shuffle_test=True)
         print(f"> Generating evaluation batch of reconstructions")
         file_name = f"./recon-{save_id}-eval.{'jpg' if args.save_jpg else 'png'}"
+        nb_generated = 0
+        imgs = []
+        pb = tqdm(total=cfg.batch_size)
         for x, _ in test_loader:
             *_, y = trainer.eval(x)
-            save_image(y, file_name, nrow=int(sqrt(cfg.mini_batch_size)), normalize=True, value_range=(-1,1))
-            break
+            imgs.append(y.cpu())
+            nb_generated += y.shape[0]
+            pb.update(y.shape[0])
+            if nb_generated >= cfg.batch_size:
+                break
+        print(f"> Assembling Image")
+        save_image(torch.cat(imgs, dim=0), file_name, nrow=int(sqrt(cfg.batch_size)), normalize=True, value_range=(-1,1))
         print(f"> Saved to {file_name}")
         exit()
         
