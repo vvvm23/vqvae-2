@@ -7,7 +7,7 @@ import argparse
 import datetime
 import time
 from pathlib import Path
-from math import sqrt
+from math import sqrt, prod
 
 from datasets import get_dataset
 from hps import HPS_VQVAE, HPS_PIXEL
@@ -54,8 +54,18 @@ def vqvae_decode(net, codes):
 
 @torch.no_grad()
 @torch.cuda.amp.autocast()
-def pixelsnail_sample(net, cs, level, nb_samples):
-    pass
+def pixelsnail_sample(net, cs, shape, nb_samples, device):
+    sample = torch.zeros(nb_samples, *shape, dtype=torch.int64).to(device)
+    cache = {}
+    pb = tqdm(total=prod(shape)) # TODO: add option to disable
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            pred, cache = model(sample, cs=cs cache={})
+            pred = F.softmax(pred[:, :, i, j], dim=1) # TODO: needs temperature parameter
+            sample[:, i, j] = torch.multinomial(pred, 1).squeeze()
+            pb.update(1)
+
+    return sample
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -64,6 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--task', type=str, default='cifar10')
     parser.add_argument('--batch-size', type=int, default=None)
+    parser.add_argument('--nb-samples', type=int, default=None)
     parser.add_argument('--no-tqdm', action='store_true')
     parser.add_argument('--no-save', action='store_true')
     parser.add_argument('--no-amp', action='store_true')
@@ -74,7 +85,7 @@ if __name__ == '__main__':
 
     save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     if args.batch_size:
-        cfg.batch_size = args.batch_size
+        cfg.mini_batch_size = args.batch_size
 
     device = get_device(args.cpu)
     vqvae = load_vqvae(args.vqvae_path, hps_vqvae, device)
