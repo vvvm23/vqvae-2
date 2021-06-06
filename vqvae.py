@@ -235,6 +235,23 @@ class VQVAE(HelperModule):
 
         return decoder_outputs[-1], diffs, encoder_outputs, decoder_outputs, id_outputs
 
+    def decode_codes(self, *cs):
+        decoder_outputs = []
+        code_outputs = []
+        upscale_counts = []
+
+        for l in range(self.nb_levels - 1, -1, -1):
+            codebook, decoder = self.codebook[l], self.decoders[l]
+            code_q = codebook.embed_code(cs[l])
+            code_outputs = [self.upscalers[i](c, upscale_counts[i]) for i,c in enumerate(code_outputs)]
+            upscale_counts = [u+1 for u in upscale_counts]
+            decoder_outputs.append(decoder(torch.cat([code_q, *code_outputs], axis=1)))
+
+            code_outputs.append(code_q)
+            upscale_counts.append(0)
+
+        return decoder_outputs[-1]
+
 if __name__ == '__main__':
     from helper import get_parameter_count
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
