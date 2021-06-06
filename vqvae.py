@@ -169,6 +169,7 @@ class Upscaler(HelperModule):
 """
     Main VQ-VAE-2 Module, capable of support arbitrary number of levels
     TODO: A lot of this class could do with a refactor. It works, but at what cost?
+    TODO: Add discrete code decoding function
 """
 class VQVAE(HelperModule):
     def build(self,

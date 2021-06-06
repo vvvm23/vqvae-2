@@ -80,11 +80,9 @@ class PixelTrainer:
             nb_pixel_block =        lcfg.nb_block,
             nb_res_block =          lcfg.nb_res_block,
             res_channel =           lcfg.nb_res_channel,
-            # attention =             lcfg.attention,
             dropout =               lcfg.dropout,
 
             nb_cond =               nb_cond,
-            # scaling_rates =         [],
             nb_cond_res_block =     lcfg.nb_cond_res_block if nb_cond else 0,
             cond_res_channel =      lcfg.nb_cond_res_channel if nb_cond else 0,
 
