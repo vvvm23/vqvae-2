@@ -54,7 +54,7 @@ def vqvae_decode(net, codes):
 
 @torch.no_grad()
 @torch.cuda.amp.autocast()
-def pixelsnail_sample(net, cs, nb_samples):
+def pixelsnail_sample(net, cs, level, nb_samples):
     pass
 
 if __name__ == '__main__':

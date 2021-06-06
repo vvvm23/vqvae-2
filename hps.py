@@ -12,6 +12,7 @@ _common = {
 
 _ffhq1024 = {
     'display_name':             'FFHQ1024',
+    'image_shape':              (3, 1024, 1024),
 
     'in_channels':              3,
     'hidden_channels':          128,
@@ -31,6 +32,7 @@ _ffhq1024 = {
 
 _ffhq1024_large = {
     'display_name':             'FFHQ1024 VQ-VAE++',
+    'image_shape':              (3, 1024, 1024),
 
     'in_channels':              3,
     'hidden_channels':          128,
@@ -50,6 +52,7 @@ _ffhq1024_large = {
 
 _ffhq256 = {
     'display_name':             'FFHQ256',
+    'image_shape':              (3, 256, 256),
 
     'in_channels':              3,
     'hidden_channels':          128,
@@ -68,6 +71,7 @@ _ffhq256 = {
 }
 _ffhq128 = {
     'display_name':             'FFHQ128',
+    'image_shape':              (3, 128, 128),
 
     'in_channels':              3,
     'hidden_channels':          128,
@@ -87,6 +91,7 @@ _ffhq128 = {
 
 _cifar10 = {
     'display_name':             'CIFAR10',
+    'image_shape':              (3, 32, 32),
 
     'in_channels':              3,
     'hidden_channels':          128,
@@ -106,6 +111,7 @@ _cifar10 = {
 
 _mnist = {
     'display_name':             'MNIST',
+    'image_shape':              (1, 28, 28),
 
     'in_channels':              1,
     'hidden_channels':          128,
@@ -125,6 +131,7 @@ _mnist = {
 
 _kmnist = {
     'display_name':             'Kuzushiji-MNIST',
+    'image_shape':              (1, 28, 28),
 
     'in_channels':              1,
     'hidden_channels':          128,
