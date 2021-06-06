@@ -13,6 +13,10 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+import torchvision
+import torchvision.transforms.functional as VF 
+from torchvision import transforms
+
 from helper import HelperModule
 
 class WNConv2d(nn.Conv2d):
@@ -196,12 +200,13 @@ class PixelSnail(nn.Module):
         coord_y = coord_y.view(1, 1, 1, width).expand(1, 1, height, width)
         self.register_buffer('bg', torch.cat([coord_x, coord_y], 1))
 
-        self.blks = nn.ModuleList([PixelBlock(channel, res_channel, kernel_size, nb_res_block, dropout=dropout, condition_dim=cond_res_channel) for _ in range(nb_pixel_block)])
+        self.blks = nn.ModuleList([
+            PixelBlock(channel, res_channel, kernel_size, nb_res_block, dropout=dropout, condition_dim=cond_res_channel) 
+        for _ in range(nb_pixel_block)])
         
         if nb_cond > 0:
-            cond_net = [WNConv2d(nb_class, cond_res_channel, cond_res_kernel, padding=cond_res_kernel // 2)]
-            cond_net.extend([GatedResBlock(cond_res_channel, cond_res_channel, cond_res_kernel) for _ in range(nb_cond_res_block)])
-            self.cond_net = nn.Sequential(*cond_net)
+            self.cond_net = CondResNet(nb_cond*nb_class, cond_res_channel, cond_res_kernel, nb_cond_res_block)
+        self.nb_cond = nb_cond
 
         out = []
         for _ in range(nb_out_res_block):
@@ -215,7 +220,7 @@ class PixelSnail(nn.Module):
         self.shift_right = lambda x, size=1: F.pad(x, [size,0,0,0])[:, :, :, :x.shape[3]]
 
     # cache is used to increase speed of sampling
-    def forward(self, x, c=None, cache=None):
+    def forward(self, x, cs = None, cache = None):
         if cache is None:
             cache = {}
         batch, height, width = x.shape
@@ -227,19 +232,21 @@ class PixelSnail(nn.Module):
 
         bg = self.bg[:, :, :height, :].expand(batch, 2, height, width)
 
-        if c != None:
+        if cs != None:
             if 'c' in cache:
-                c = cache['c']
-                c = c[:, :, :height, :]
+                cs = cache['c']
+                cs = cs[:, :, :height, :]
             else:
-                c = F.one_hot(c, self.nb_class).permute(0,3,1,2).type_as(self.bg)
-                c = self.cond_net(c)
-                c = F.interpolate(c, scale_factor=4) # TODO: Could have some tranposed Conv2d instead
-                cache['condition'] = c.detach().clone()
-                c = c[:, :, :height, :]
+                up_fn = transforms.Resize((height, width), VF.InterpolationMode.NEAREST)
+                cs = [up_fn(c).unsqueeze(1) for c in cs]
+                cs = torch.cat(cs, dim=1)
+                cs = F.one_hot(cs, self.nb_class).view(batch, -1, height, width).type_as(self.bg)
+                cs = self.cond_net(cs)
+                cache['condition'] = cs.detach().clone()
+                cs = cs[:, :, :height, :]
 
         for blk in self.blks:
-            y = blk(y, bg, c=c)
+            y = blk(y, bg, c=cs)
         y = self.out(y)
         return y, cache
 
@@ -249,6 +256,6 @@ if __name__ == "__main__":
     print(ps(x)[0].shape)
 
     x = torch.LongTensor(1, 24, 24).random_(0, 255)
-    c = torch.LongTensor(1, 6, 6).random_(0, 255)
-    ps = PixelSnail([24, 24], 512, 64, 7, 7, 2, 32, nb_cond_res_block=3, cond_res_channel=32, nb_out_res_block=5)
-    print(ps(x, c=c)[0].shape)
+    cs = [torch.LongTensor(1, 6, 6).random_(0, 255), torch.LongTensor(1, 12, 12).random_(0, 255)]
+    ps = PixelSnail([24, 24], 512, 64, 7, 7, 2, 32, nb_cond_res_block=3, cond_res_channel=32, nb_out_res_block=5, nb_cond=2)
+    print(ps(x, cs=cs)[0].shape)
