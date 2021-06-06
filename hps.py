@@ -167,7 +167,7 @@ _cifar10 = {
     'display_name':                 'CIFAR10',
 
     'batch_size':                   512,
-    'mini_batch_size':              64,
+    'mini_batch_size':              128,
     'learning_rate':                1e-4,
     'max_epochs':                   100,
 
