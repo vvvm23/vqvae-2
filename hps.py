@@ -161,7 +161,6 @@ HPS_VQVAE = {
 
 """
     -- PixelSnail Hyperparameters --
-    TODO: check if shared task names overwrites!
 """
 
 _common = {
@@ -210,6 +209,102 @@ _cifar10 = {
     ]
 }
 
+_ffhq256 = {
+    'display_name':                 'FFHQ256',
+
+    'batch_size':                   256,
+    'mini_batch_size':              64,
+    'learning_rate':                1e-4,
+    'max_epochs':                   100,
+
+    'scaling_rates':                [2, 2],
+    'nb_entries':                   512,
+
+    'level': [
+        SimpleNamespace(**{
+            'channel':              256,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            True,
+            'dropout':              0.1,
+            
+            'nb_cond_res_block':    3,
+            'nb_cond_res_channel':  256,
+
+            'nb_out_res_block':     0,
+        }),
+        SimpleNamespace(**{
+            'channel':              256,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            True,
+            'dropout':              0.1,
+
+            'nb_out_res_block':     0,
+        }),
+    ]
+}
+
+_ffhq1024 = {
+    'display_name':                 'FFHQ1024',
+
+    'batch_size':                   32,
+    'mini_batch_size':              4,
+    'learning_rate':                1e-4,
+    'max_epochs':                   100,
+
+    'scaling_rates':                [8, 2, 2],
+    'nb_entries':                   512,
+
+    'level': [
+        SimpleNamespace(**{
+            'channel':              256,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            False, 
+            'dropout':              0.1,
+            
+            'nb_cond_res_block':    3,
+            'nb_cond_res_channel':  256,
+
+            'nb_out_res_block':     0,
+        }),
+        SimpleNamespace(**{
+            'channel':              256,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            True,
+            'dropout':              0.1,
+
+            'nb_cond_res_block':    3,
+            'nb_cond_res_channel':  256,
+
+            'nb_out_res_block':     0,
+        }),
+        SimpleNamespace(**{
+            'channel':              256,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            True,
+            'dropout':              0.1,
+
+            'nb_out_res_block':     0,
+        }),
+    ]
+}
+
 HPS_PIXEL = {
-    'cifar10':      SimpleNamespace(**(_common | _cifar10))
+    'cifar10':          SimpleNamespace(**(_common | _cifar10)),
+    'ffhq256':          SimpleNamespace(**(_common | _ffhq256)),
+    'ffhq1024':         SimpleNamespace(**(_common | _ffhq1024)),
 }
