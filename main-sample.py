@@ -42,6 +42,7 @@ def load_pixelsnail(path, cfg, level, device):
         cond_res_channel =      lcfg.nb_cond_res_channel if nb_cond else 0,
 
         nb_out_res_block =      lcfg.nb_out_res_block,
+        attention =             lcfg.attention,
     ).to(device)
     net.load_state_dict(torch.load(path))
     net.eval()

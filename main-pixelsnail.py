@@ -50,6 +50,7 @@ if __name__ == '__main__':
         log_dir.mkdir(exist_ok=True)
 
     # TODO: Currently possible to load dataset of incorrect size. Might lead to OOM if BS is too large
+    print("> Loading Latent dataset")
     dataset = torch.load(args.dataset_path)
     train_dataset, test_dataset = dataset['train'], dataset['test']
     train_dataset, test_dataset = LatentDataset(train_dataset), LatentDataset(test_dataset)
@@ -59,6 +60,7 @@ if __name__ == '__main__':
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=False)
 
+    print("> Initialising Model")
     trainer = PixelTrainer(cfg, args)
 
     if args.load_path:

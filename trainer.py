@@ -87,7 +87,9 @@ class PixelTrainer:
             cond_res_channel =      lcfg.nb_cond_res_channel if nb_cond else 0,
 
             nb_out_res_block =      lcfg.nb_out_res_block,
+            attention =             lcfg.attention,
         ).to(self.device)
+
         self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
         self.opt.zero_grad()
         
