@@ -80,7 +80,7 @@ class GatedResBlock(nn.Module):
         y = self.drop1(y)
         y = self.conv2(y)
 
-        if c != None:
+        if c != None and len(c) > 0:
             y = self.convc(c) + y
         y = self.gate(y) + x
         return y
@@ -232,7 +232,7 @@ class PixelSnail(nn.Module):
 
         bg = self.bg[:, :, :height, :].expand(batch, 2, height, width)
 
-        if cs != None:
+        if cs != None and len(cs) > 0:
             if 'c' in cache:
                 cs = cache['c']
                 cs = cs[:, :, :height, :]

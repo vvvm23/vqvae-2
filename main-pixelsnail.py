@@ -28,7 +28,6 @@ if __name__ == '__main__':
     parser.add_argument('--evaluate', action='store_true')
     parser.add_argument('--generate', action='store_true')
     parser.add_argument('--save-jpg', action='store_true')
-    parser.add_argument('--level', action='store_true')
     args = parser.parse_args()
 
     cfg = HPS[args.task]
@@ -66,24 +65,25 @@ if __name__ == '__main__':
         print(f"> Loading model parameters from checkpoint")
         trainer.load_checkpoint(args.load_path)
 
-
-    # TODO: train-eval loop over tandem latent dataset (level0, level1, ..., levelN)
     for eid in range(cfg.max_epochs):
         print(f"> Epoch {eid+1}/{cfg.max_epochs}:")
         epoch_loss, epoch_accuracy = 0.0, 0.0
         epoch_start_time = time.time()
 
         pb = tqdm(train_loader, disable=args.no_tqdm)
-        for i, (x, *c) in enumerate(pb):
-            loss, accuracy = trainer.train_step(x, *c)
+        for i, d in enumerate(pb):
+            x, c = d[args.level], d[args.level+1:]
+            loss, accuracy = trainer.train_step(x, c)
             epoch_loss += loss
             epoch_accuracy += accuracy
             pb.set_description(f"training loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")
         print(f"> Training loss: {epoch_loss / len(train_loader)} | accuracy: {100.0 * epoch_accuracy / len(train_loader)}%")
 
+        epoch_loss, epoch_accuracy = 0.0, 0.0
         pb = tqdm(test_loader, disable=args.no_tqdm)
-        for i, (x, *c) in enumerate(pb):
-            loss, accuracy = trainer.eval_step(x, *c)
+        for i, d in enumerate(pb):
+            x, c = d[args.level], d[args.level+1:]
+            loss, accuracy = trainer.eval_step(x, c)
             epoch_loss += loss
             epoch_accuracy += accuracy
             pb.set_description(f"evaluation loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")

@@ -34,12 +34,9 @@ class VQVAETrainer:
     # another function can then call step
     def train(self, x: torch.FloatTensor):
         self.net.train()
-        # self.opt.zero_grad()
         with torch.cuda.amp.autocast(enabled=self.scaler.is_enabled()):
             loss, r_loss, l_loss, _ = self._calculate_loss(x)
         self.scaler.scale(loss / self.update_frequency).backward()
-        # self.scaler.step(self.opt)
-        # self.scaler.update()
 
         self.train_steps += 1
         if self.train_steps % self.update_frequency == 0:
@@ -71,30 +68,28 @@ class VQVAETrainer:
 class PixelTrainer:
     def __init__(self, cfg, args):
         self.device = get_device(args.cpu)
-        # self.net = PixelSNAIL((32, 32), 256).to(self.device)
 
         lcfg = cfg.level[args.level]
-        nb_cond = len(cfg.level) - args.level
+        nb_cond = len(cfg.level) - args.level - 1
 
-        self.net = PixelSNAIL(
+        self.net = PixelSnail(
             shape =                 cfg.code_shape,
-            nb_entries =            cfg.nb_entries,
+            nb_class =              cfg.nb_entries,
             channel =               lcfg.channel,
             kernel_size =           lcfg.kernel_size,
-            nb_block =              lcfg.nb_block,
+            nb_pixel_block =        lcfg.nb_block,
             nb_res_block =          lcfg.nb_res_block,
-            nb_res_channel =        lcfg.nb_res_channel,
-            attention =             lcfg.attention,
+            res_channel =           lcfg.nb_res_channel,
+            # attention =             lcfg.attention,
             dropout =               lcfg.dropout,
 
-            # TODO: Figure out correct nb_cond and scaling_rate based on args.level
             nb_cond =               nb_cond,
-            scaling_rates =         [],
+            # scaling_rates =         [],
             nb_cond_res_block =     lcfg.nb_cond_res_block if nb_cond else 0,
-            nb_cond_res_channel =   lcfg.nb_cond_res_channel if nb_cond else 0,
+            cond_res_channel =      lcfg.nb_cond_res_channel if nb_cond else 0,
 
             nb_out_res_block =      lcfg.nb_out_res_block,
-        )
+        ).to(self.device)
         self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
         self.opt.zero_grad()
         
@@ -104,13 +99,14 @@ class PixelTrainer:
         self.train_steps = 0
 
     @torch.cuda.amp.autocast()
-    def _calculate_loss(self, x: torch.LongTensor, *condition):
+    def _calculate_loss(self, x: torch.LongTensor, condition):
         x = x.to(self.device)
-        y, _ = self.net(x, *condition)
+        condition = [c.to(self.device) for c in condition]
+        y, _ = self.net(x, cs=condition)
         loss = F.cross_entropy(y, x)
 
         y_max = torch.argmax(y, dim=1)
-        accuracy = (y_max == x) / torch.numel(x)
+        accuracy = (y_max == x).sum() / torch.numel(x)
 
         return loss, accuracy
 
@@ -119,9 +115,9 @@ class PixelTrainer:
         self.opt.zero_grad()
         self.scaler.update()
     
-    def train_step(self, x: torch.LongTensor, *condition):
+    def train_step(self, x: torch.LongTensor, condition):
         self.net.train()
-        loss, accuracy = self._calculate_loss(x, *condition)
+        loss, accuracy = self._calculate_loss(x, condition)
         self.scaler.scale(loss / self.update_frequency).backward()
 
         self.train_steps += 1
@@ -131,9 +127,9 @@ class PixelTrainer:
         return loss.item(), accuracy.item()
 
     @torch.no_grad()
-    def eval_step(self, x: torch.LongTensor, *condition):
+    def eval_step(self, x: torch.LongTensor, condition):
         self.net.eval()
-        loss, accuracy = self._calculate_loss(x, *condition)
+        loss, accuracy = self._calculate_loss(x, condition)
         return loss.item(), accuracy.item()
 
     def save_checkpoint(self, path):
