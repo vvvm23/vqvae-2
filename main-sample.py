@@ -50,6 +50,7 @@ def load_pixelsnail(path, cfg, level, device):
 @torch.no_grad()
 @torch.cuda.amp.autocast()
 def vqvae_decode(net, codes):
+    # TODO: This, needs some functions in main class though
     pass
 
 @torch.no_grad()
@@ -65,7 +66,7 @@ def pixelsnail_sample(net, cs, shape, nb_samples, device):
             sample[:, i, j] = torch.multinomial(pred, 1).squeeze()
             pb.update(1)
 
-    return sample
+    return sample.cpu()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -84,9 +85,29 @@ if __name__ == '__main__':
     hps_vqvae, hps_pixel = HPS_VQVAE[args.task], HPS_PIXEL[args.task]
 
     save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    device = get_device(args.cpu)
+
     if args.batch_size:
         cfg.mini_batch_size = args.batch_size
+    _, *shape  = hps_vqvae.image_shape
 
-    device = get_device(args.cpu)
+    print("> Loading VQ-VAE-2")
     vqvae = load_vqvae(args.vqvae_path, hps_vqvae, device)
+    print("> Loading PixelSnail priors")
     pixelsnails = [load_pixelsnail(p, hps_pixel, l, device) for l, p in enumerate(args.pixelsnail_path)]
+
+    codes = []
+    for l in range(hps_vqvae.nb_levels-1, -1, -1):
+        print(f"> Sampling from PixelSnail level {l}")
+        scale_product = prod(hps_vqvae.scaling_rates[:l+1])
+        latent_shape = (shape[0] // scale_product, shape[1] // scale_product)
+        sample = pixelsnail_sample(pixelsnails[l], codes, args.nb_samples, device)
+        codes.append(sample)
+        print()
+
+    print(f"> Decoding sampled latent codes using VQ-VAE")
+    img = vqvae_decode(vqvae, codes)
+
+    save_path = f"sample-{save_id}.{'jpg' if args.save_jpg else 'png'}"
+    print(f"> Saving image to {save_path}")
+    save_image(img, save_path, nrow=int(sqrt(args.nb_samples)), normalize=True, value_range=(-1,1))
