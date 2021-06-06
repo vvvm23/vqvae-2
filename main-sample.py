@@ -49,9 +49,9 @@ def load_pixelsnail(path, cfg, level, device):
 
 @torch.no_grad()
 @torch.cuda.amp.autocast()
-def vqvae_decode(net, codes):
-    # TODO: This, needs some functions in main class though
-    pass
+def vqvae_decode(net, codes, device):
+    codes = [c.to(device) for c in codes]
+    return net.decode_codes(codes).cpu()
 
 @torch.no_grad()
 @torch.cuda.amp.autocast()
@@ -106,7 +106,7 @@ if __name__ == '__main__':
         print()
 
     print(f"> Decoding sampled latent codes using VQ-VAE")
-    img = vqvae_decode(vqvae, codes)
+    img = vqvae_decode(vqvae, codes, device)
 
     save_path = f"sample-{save_id}.{'jpg' if args.save_jpg else 'png'}"
     print(f"> Saving image to {save_path}")
