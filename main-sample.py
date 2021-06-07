@@ -24,11 +24,11 @@ def load_vqvae(path, cfg, device):
     net.eval()
     return net
 
-def load_pixelsnail(path, cfg, level, device):
+def load_pixelsnail(path, cfg, shape, level, device):
     lcfg = cfg.level[args.level]
     nb_cond = len(cfg.level) - level - 1
     net = PixelSnail(
-        shape =                 cfg.code_shape, # TODO: unavailable in this script, calculate from scaling rates?
+        shape =                 shape, 
         nb_class =              cfg.nb_entries,
         channel =               lcfg.channel,
         kernel_size =           lcfg.kernel_size,
@@ -95,14 +95,16 @@ if __name__ == '__main__':
     print("> Loading VQ-VAE-2")
     vqvae = load_vqvae(args.vqvae_path, hps_vqvae, device)
     print("> Loading PixelSnail priors")
-    pixelsnails = [load_pixelsnail(p, hps_pixel, l, device) for l, p in enumerate(args.pixelsnail_path)]
+    latent_shapes = [(shape[0] // prod(hps_vqvae.scaling_rates[:l+1]), shape[1] // prod(hps_vqvae.scaling_rates[:l+1])) for l in range(hps_vqvae.nb_levels)]
+    pixelsnails = [load_pixelsnail(p, hps_pixel, l, 
+                    latent_shapes[l], device) for l, p in enumerate(args.pixelsnail_path)]
 
     codes = []
     for l in range(hps_vqvae.nb_levels-1, -1, -1):
         print(f"> Sampling from PixelSnail level {l}")
-        scale_product = prod(hps_vqvae.scaling_rates[:l+1])
-        latent_shape = (shape[0] // scale_product, shape[1] // scale_product)
-        sample = pixelsnail_sample(pixelsnails[l], codes, args.nb_samples, device)
+        # scale_product = prod(hps_vqvae.scaling_rates[:l+1])
+        # latent_shape = (shape[0] // scale_product, shape[1] // scale_product)
+        sample = pixelsnail_sample(pixelsnails[l], codes, latent_shapes[l], args.nb_samples, device)
         codes.append(sample)
         print()
 

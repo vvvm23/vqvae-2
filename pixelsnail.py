@@ -252,14 +252,13 @@ class PixelSnail(nn.Module):
                 cs = cache['c']
                 cs = cs[:, :, :height, :]
             else:
-                # up_fn = transforms.Resize((height, width), VF.InterpolationMode.NEAREST)
-                # cs = [up_fn(c).unsqueeze(1) for c in cs]
-                # cs = torch.cat(cs, dim=1)
-                # cs = F.one_hot(cs, self.nb_class).view(batch, -1, height, width).type_as(self.bg)
-                # TODO: Move this out into dataloader?
-                cs = [F.one_hot(c, self.nb_class).view(batch, -1, c.shape[1], c.shape[2]).float() for c in cs]
-                cs = [F.interpolate(c, size=(height, width)) for c in cs]
+                up_fn = transforms.Resize((height, width), VF.InterpolationMode.NEAREST)
+                cs = [up_fn(c).unsqueeze(1) for c in cs]
                 cs = torch.cat(cs, dim=1)
+                cs = F.one_hot(cs, self.nb_class).view(batch, -1, height, width).type_as(self.bg)
+                # cs = [F.one_hot(c, self.nb_class).view(batch, -1, c.shape[1], c.shape[2]).float() for c in cs]
+                # cs = [F.interpolate(c, size=(height, width)) for c in cs]
+                # cs = torch.cat(cs, dim=1)
                 cs = self.cond_net(cs)
                 cache['condition'] = cs.detach().clone()
                 cs = cs[:, :, :height, :]
