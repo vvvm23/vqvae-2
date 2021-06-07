@@ -24,10 +24,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=None)
     parser.add_argument('--no-tqdm', action='store_true')
     parser.add_argument('--no-save', action='store_true')
-    parser.add_argument('--no-amp', action='store_true')
-    parser.add_argument('--evaluate', action='store_true')
-    parser.add_argument('--generate', action='store_true')
-    parser.add_argument('--save-jpg', action='store_true')
+    parser.add_argument('--no-amp', action='store_true') # TODO: Not implemented
+    parser.add_argument('--evaluate', action='store_true') # TODO: Not implemented
     args = parser.parse_args()
 
     cfg = HPS[args.task]

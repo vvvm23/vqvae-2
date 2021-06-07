@@ -53,7 +53,20 @@ Other useful flags:
 ```
 
 ### Discrete Prior Usage
-`TODO: this.`
+Run level `level` PixelSnail discrete prior training using the config `task_name` found in `hps.py` using latent dataset saved at path `latent_dataset.pt`. Defaults to `cifar10`:
+```
+python main-pixelsnail.py latent_dataset.pt level --task task_name
+```
+
+Other useful flags:
+```
+--cpu           # do not use GPU
+--load-path     # resume from saved state on disk
+--batch-size    # overrides batch size in cfg.py, useful for evaluating on larger batch size
+--no-tqdm       # disable tqdm status bars
+--no-save       # disables saving of files
+--no-amp        # disables using native AMP (Automatic Mixed Precision) operations
+```
 
 ### Sample Generation 
 `TODO: this.`
@@ -76,7 +89,7 @@ Other useful flags:
 - [X] Accumulated gradient training (for larger batch sizes on limited resources)
 - [X] Samples and checkpoints on FFHQ1024
 - [X] Latent dataset generation
-- [ ] Autoregressive prior models / training scripts
+- [X] Autoregressive prior models / training scripts
 - [ ] Full system sampling
 
 ### Citations

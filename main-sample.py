@@ -102,8 +102,6 @@ if __name__ == '__main__':
     codes = []
     for l in range(hps_vqvae.nb_levels-1, -1, -1):
         print(f"> Sampling from PixelSnail level {l}")
-        # scale_product = prod(hps_vqvae.scaling_rates[:l+1])
-        # latent_shape = (shape[0] // scale_product, shape[1] // scale_product)
         sample = pixelsnail_sample(pixelsnails[l], codes, latent_shapes[l], args.nb_samples, device)
         codes.append(sample)
         print()
