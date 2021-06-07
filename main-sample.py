@@ -56,14 +56,14 @@ def vqvae_decode(net, codes, device):
 
 @torch.no_grad()
 @torch.cuda.amp.autocast()
-def pixelsnail_sample(net, cs, shape, nb_samples, device):
+def pixelsnail_sample(net, cs, shape, nb_samples, device, tqdm_off=False, temperature=1.0):
     sample = torch.zeros(nb_samples, *shape, dtype=torch.int64).to(device)
     cache = {}
-    pb = tqdm(total=prod(shape)) # TODO: add option to disable
+    pb = tqdm(total=prod(shape), disable=tqdm_off) 
     for i in range(shape[0]):
         for j in range(shape[1]):
             pred, cache = model(sample, cs=cs cache={})
-            pred = F.softmax(pred[:, :, i, j], dim=1) # TODO: needs temperature parameter
+            pred = F.softmax(pred[:, :, i, j] / temperature, dim=1) 
             sample[:, i, j] = torch.multinomial(pred, 1).squeeze()
             pb.update(1)
 
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     codes = []
     for l in range(hps_vqvae.nb_levels-1, -1, -1):
         print(f"> Sampling from PixelSnail level {l}")
-        sample = pixelsnail_sample(pixelsnails[l], codes, latent_shapes[l], args.nb_samples, device)
+        sample = pixelsnail_sample(pixelsnails[l], codes, latent_shapes[l], args.nb_samples, device, tqdm_off=args.no_tqdm)
         codes.append(sample)
         print()
 
