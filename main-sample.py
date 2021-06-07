@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import torchvision
 from torchvision.utils import save_image
 
@@ -9,7 +10,8 @@ import time
 from pathlib import Path
 from math import sqrt, prod
 
-from datasets import get_dataset
+from vqvae import VQVAE
+from pixelsnail import PixelSnail
 from hps import HPS_VQVAE, HPS_PIXEL
 from helper import get_device, get_parameter_count
 
@@ -24,8 +26,8 @@ def load_vqvae(path, cfg, device):
     net.eval()
     return net
 
-def load_pixelsnail(path, cfg, shape, level, device):
-    lcfg = cfg.level[args.level]
+def load_pixelsnail(path, cfg, level, shape, device):
+    lcfg = cfg.level[level]
     nb_cond = len(cfg.level) - level - 1
     net = PixelSnail(
         shape =                 shape, 
@@ -51,8 +53,8 @@ def load_pixelsnail(path, cfg, shape, level, device):
 @torch.no_grad()
 @torch.cuda.amp.autocast()
 def vqvae_decode(net, codes, device):
-    codes = [c.to(device) for c in codes]
-    return net.decode_codes(codes).cpu()
+    codes = [c.to(device) for c in reversed(codes)]
+    return net.decode_codes(*codes).cpu().float()
 
 @torch.no_grad()
 @torch.cuda.amp.autocast()
@@ -62,7 +64,7 @@ def pixelsnail_sample(net, cs, shape, nb_samples, device, tqdm_off=False, temper
     pb = tqdm(total=prod(shape), disable=tqdm_off) 
     for i in range(shape[0]):
         for j in range(shape[1]):
-            pred, cache = model(sample, cs=cs cache={})
+            pred, cache = net(sample, cs=cs, cache=cache)
             pred = F.softmax(pred[:, :, i, j] / temperature, dim=1) 
             sample[:, i, j] = torch.multinomial(pred, 1).squeeze()
             pb.update(1)
@@ -111,4 +113,5 @@ if __name__ == '__main__':
 
     save_path = f"sample-{save_id}.{'jpg' if args.save_jpg else 'png'}"
     print(f"> Saving image to {save_path}")
+    print(img.shape)
     save_image(img, save_path, nrow=int(sqrt(args.nb_samples)), normalize=True, value_range=(-1,1))
