@@ -281,7 +281,7 @@ _ffhq1024 = {
             'nb_block':             4,
             'nb_res_block':         4,
             'nb_res_channel':       256,
-            'attention':            True,
+            'attention':            False,
             'dropout':              0.1,
 
             'nb_cond_res_block':    3,

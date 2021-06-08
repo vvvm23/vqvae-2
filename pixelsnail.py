@@ -209,11 +209,14 @@ class PixelSnail(nn.Module):
         self.horz_conv = CausalConv2d(nb_class, channel, [kernel_size // 2, kernel_size], padding='down')
         self.vert_conv = CausalConv2d(nb_class, channel, [(kernel_size+1) // 2, kernel_size // 2], padding='downright')
 
-        coord_x = (torch.arange(height).float() - height / 2) / height
+        coord_x = (torch.arange(float(height)) - height / 2) / height
         coord_x = coord_x.view(1, 1, height, 1).expand(1, 1, height, width)
-        coord_y = (torch.arange(width).float() - width / 2) / width
+        coord_y = (torch.arange(float(width)) - width / 2) / width
         coord_y = coord_y.view(1, 1, 1, width).expand(1, 1, height, width)
-        self.register_buffer('bg', torch.cat([coord_x, coord_y], 1))
+
+        # TODO: might need to generate bg with cacheable buffer, based on shape, so to support different precisions.
+        # TODO: or does it not break mixed? might just cast up
+        self.register_buffer('bg', torch.cat([coord_x, coord_y], 1).half()) # TODO: breaks single-precision mode
 
         self.blks = nn.ModuleList([
             PixelBlock(channel, res_channel, kernel_size, nb_res_block, dropout=dropout, condition_dim=cond_res_channel, attention=attention) 
