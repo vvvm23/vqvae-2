@@ -8,7 +8,8 @@ Vector Quantizing layer based off implementation by [@rosinality](https://github
 found [here](https://github.com/rosinality/vq-vae-2-pytorch).
 
 Aiming for a focus on supporting an arbitrary number of VQ-VAE "levels". Most implementations in 
-PyTorch typically only use 2 which is limiting at higher resolutions.
+PyTorch typically only use 2 which is limiting at higher resolutions. This repository contains 
+checkpoints for a 3-level and 5-level VQ-VAE-2, trained on FFHQ1024.
 
 This project will not only contain the VQ-VAE-2 architecture, but also an example autoregressive 
 prior and latent dataset extraction.
@@ -79,7 +80,9 @@ Other useful flags:
 ![Reconstructions from FFHQ1024 using a 3-level VQ-VAE-2](recon-example.png)
 
 ## Checkpoints
-[FFHQ1024 - 3-stage VQ-VAE-2](ffhq1024-state-dict-0017.pt)
+[FFHQ1024 - 3-level VQ-VAE-2](ffhq1024-state-dict-0017.pt)
+
+[FFHQ1024 - 5-level VQ-VAE-2](ffhq1024-large-state-dict-0010.pt)
 
 ### Roadmap
 - [ ] Prettier outputs
@@ -90,7 +93,7 @@ Other useful flags:
 - [X] Samples and checkpoints on FFHQ1024
 - [X] Latent dataset generation
 - [X] Autoregressive prior models / training scripts
-- [ ] Full system sampling
+- [X] Full system sampling
 
 ### Citations
 **Generating Diverse High-Fidelity Images with VQ-VAE-2**

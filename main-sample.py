@@ -101,6 +101,7 @@ if __name__ == '__main__':
     pixelsnails = [load_pixelsnail(p, hps_pixel, l, 
                     latent_shapes[l], device) for l, p in enumerate(args.pixelsnail_path)]
 
+    
     codes = []
     for l in range(hps_vqvae.nb_levels-1, -1, -1):
         print(f"> Sampling from PixelSnail level {l}")
