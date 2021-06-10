@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     if args.batch_size:
-        cfg.batch_size = args.batch_size
+        cfg.mini_batch_size = args.batch_size
 
     if not args.no_save:
         runs_dir = Path(f"runs")

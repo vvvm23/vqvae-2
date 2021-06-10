@@ -4,10 +4,10 @@ from types import SimpleNamespace
     -- VQ-VAE-2 Hyperparameters --
 """
 _common = {
-    'checkpoint_frequency':         5,
+    'checkpoint_frequency':         4,
     'image_frequency':              1,
     'test_size':                    0.1,
-    'nb_workers':                   8,
+    'nb_workers':                   4,
 }
 
 _ffhq1024 = {
@@ -164,9 +164,9 @@ HPS_VQVAE = {
 """
 
 _common = {
-    'checkpoint_frequency':     5,
+    'checkpoint_frequency':     1,
     'image_frequency':          1,
-    'nb_workers':               8,
+    'nb_workers':               4,
 }
 
 _cifar10 = {
@@ -252,8 +252,8 @@ _ffhq256 = {
 _ffhq1024 = {
     'display_name':                 'FFHQ1024',
 
-    'batch_size':                   32,
-    'mini_batch_size':              4,
+    'batch_size':                   256,
+    'mini_batch_size':              8,
     'learning_rate':                1e-4,
     'max_epochs':                   100,
 
@@ -262,41 +262,41 @@ _ffhq1024 = {
 
     'level': [
         SimpleNamespace(**{
-            'channel':              256,
+            'channel':              512,
             'kernel_size':          5,
-            'nb_block':             4,
+            'nb_block':             8,
             'nb_res_block':         4,
-            'nb_res_channel':       256,
+            'nb_res_channel':       1024,
             'attention':            False, 
-            'dropout':              0.1,
+            'dropout':              0.2,
             
-            'nb_cond_res_block':    3,
-            'nb_cond_res_channel':  256,
+            'nb_cond_res_block':    6,
+            'nb_cond_res_channel':  512,
 
             'nb_out_res_block':     0,
         }),
         SimpleNamespace(**{
-            'channel':              256,
+            'channel':              512,
             'kernel_size':          5,
-            'nb_block':             4,
+            'nb_block':             8,
             'nb_res_block':         4,
-            'nb_res_channel':       256,
+            'nb_res_channel':       1024,
             'attention':            False,
-            'dropout':              0.1,
+            'dropout':              0.3,
 
-            'nb_cond_res_block':    3,
-            'nb_cond_res_channel':  256,
+            'nb_cond_res_block':    6,
+            'nb_cond_res_channel':  512,
 
             'nb_out_res_block':     0,
         }),
         SimpleNamespace(**{
-            'channel':              256,
+            'channel':              512,
             'kernel_size':          5,
-            'nb_block':             4,
+            'nb_block':             6,
             'nb_res_block':         4,
-            'nb_res_channel':       256,
+            'nb_res_channel':       2048,
             'attention':            True,
-            'dropout':              0.1,
+            'dropout':              0.4,
 
             'nb_out_res_block':     0,
         }),
