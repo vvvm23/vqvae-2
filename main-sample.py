@@ -83,6 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-save', action='store_true')
     parser.add_argument('--no-amp', action='store_true')
     parser.add_argument('--save-jpg', action='store_true')
+    parser.add_argument('--temperature', type=float, default=1.0)
     args = parser.parse_args()
 
     hps_vqvae, hps_pixel = HPS_VQVAE[args.task], HPS_PIXEL[args.task]
@@ -105,7 +106,7 @@ if __name__ == '__main__':
     codes = []
     for l in range(hps_vqvae.nb_levels-1, -1, -1):
         print(f"> Sampling from PixelSnail level {l}")
-        sample = pixelsnail_sample(pixelsnails[l], codes, latent_shapes[l], args.nb_samples, device, tqdm_off=args.no_tqdm)
+        sample = pixelsnail_sample(pixelsnails[l], codes, latent_shapes[l], args.nb_samples, device, tqdm_off=args.no_tqdm, temperature=args.temperature)
         codes.append(sample)
         print()
 
