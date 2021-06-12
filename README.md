@@ -70,7 +70,24 @@ Other useful flags:
 ```
 
 ### Sample Generation 
-`TODO: this.`
+Run sampling script on trained VQ-VAE-2 and PixelSnail priors using the config `task_name` (default `cifar10`) found in `hps.py`.
+The first positional argument is the path to the VQ-VAE-2 checkpoint. The remaining `L` positional arguments are the PixelSnail 
+prior checkpoints from level `0` to `L`.
+```
+python main-sample.py vq_vae_path.pt pixelsnail_0_path.pt pixel_snail_1_path.pt ... --task task_name
+```
+
+Other useful flags:
+```
+--cpu           # do not use GPU
+--batch-size    # overrides batch size in cfg.py, useful for evaluating on larger batch size
+--nb-samples    # number of samples to generate. defaults to 1.
+--no-tqdm       # disable tqdm status bars
+--no-save       # disables saving of files
+--no-amp        # disables using native AMP (Automatic Mixed Precision) operations
+--save-jpg      # save all images as jpg instead of png, useful for extreme resolutions
+--temperature   # controls softmax temperature during sampling
+```
 
 ## Modifications
 - Replacing residual layers with ReZero layers.
@@ -85,15 +102,15 @@ Other useful flags:
 [FFHQ1024 - 5-level VQ-VAE-2](ffhq1024-large-state-dict-0010.pt)
 
 ### Roadmap
-- [ ] Prettier outputs
 - [X] Server mode (no fancy printing)
 - [X] Experiment directories (containing logs / checkpoints / etc)
-- [ ] Output logging
 - [X] Accumulated gradient training (for larger batch sizes on limited resources)
 - [X] Samples and checkpoints on FFHQ1024
 - [X] Latent dataset generation
 - [X] Autoregressive prior models / training scripts
 - [X] Full system sampling
+- [ ] Prettier outputs
+- [ ] Output logging
 
 ### Citations
 **Generating Diverse High-Fidelity Images with VQ-VAE-2**

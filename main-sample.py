@@ -78,10 +78,10 @@ if __name__ == '__main__':
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--task', type=str, default='cifar10')
     parser.add_argument('--batch-size', type=int, default=None)
-    parser.add_argument('--nb-samples', type=int, default=None)
+    parser.add_argument('--nb-samples', type=int, default=1)
     parser.add_argument('--no-tqdm', action='store_true')
-    parser.add_argument('--no-save', action='store_true')
-    parser.add_argument('--no-amp', action='store_true')
+    parser.add_argument('--no-save', action='store_true') # not implemented
+    parser.add_argument('--no-amp', action='store_true') # not implemented
     parser.add_argument('--save-jpg', action='store_true')
     parser.add_argument('--temperature', type=float, default=1.0)
     args = parser.parse_args()
