@@ -251,8 +251,8 @@ class PixelSnail(nn.Module):
         bg = self.bg[:, :, :height, :].expand(batch, 2, height, width)
 
         if cs != None and len(cs) > 0:
-            if 'c' in cache:
-                cs = cache['c']
+            if 'condition' in cache:
+                cs = cache['condition']
                 cs = cs[:, :, :height, :]
             else:
                 up_fn = transforms.Resize((height, width), VF.InterpolationMode.NEAREST)
