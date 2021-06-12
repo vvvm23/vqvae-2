@@ -51,7 +51,7 @@ if __name__ == '__main__':
     print("> Loading Latent dataset")
     dataset = torch.load(args.dataset_path)
     train_dataset, test_dataset = dataset['train'], dataset['test']
-    train_dataset, test_dataset = LatentDataset(train_dataset), LatentDataset(test_dataset)
+    train_dataset, test_dataset = LatentDataset(*train_dataset), LatentDataset(*test_dataset)
 
     cfg.code_shape = train_dataset.get_shape(args.level)
 

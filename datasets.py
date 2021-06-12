@@ -64,8 +64,7 @@ def get_dataset(task: str, cfg, shuffle_train=True, shuffle_test=False, return_d
 class LatentDataset(torch.utils.data.Dataset):
     def __init__(self, *latents):
         super().__init__()
-        # TODO: Why [0] here? shouldn't be needed but it is
-        self.data = latents[0]
+        self.data = latents
 
     def __len__(self):
         return self.data[0].shape[0]
