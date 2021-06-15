@@ -14,6 +14,9 @@ checkpoints for a 3-level and 5-level VQ-VAE-2, trained on FFHQ1024.
 This project will not only contain the VQ-VAE-2 architecture, but also an example autoregressive 
 prior and latent dataset extraction.
 
+> This project is very much Work-in-Progress.
+> VQ-VAE-2 model is mostly complete. PixelSnail prior models are still experimental.
+
 ## Usage
 ### VQ-VAE-2 Usage
 Run VQ-VAE-2 training using the config `task_name` found in `hps.py`. Defaults to `cifar10`:
