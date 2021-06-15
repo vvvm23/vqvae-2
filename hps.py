@@ -56,17 +56,17 @@ _ffhq256 = {
 
     'in_channels':              3,
     'hidden_channels':          128,
-    'res_channels':             32,
+    'res_channels':             64,
     'nb_res_layers':            2,
     'embed_dim':                64,
     'nb_entries':               512,
     'nb_levels':                2,
     'scaling_rates':            [4, 2],
 
-    'learning_rate':            3e-3,
+    'learning_rate':            1e-4,
     'beta':                     0.25,
-    'batch_size':               4096,
-    'mini_batch_size':          32,
+    'batch_size':               128,
+    'mini_batch_size':          128,
     'max_epochs':               100,
 }
 _ffhq128 = {
@@ -212,7 +212,7 @@ _cifar10 = {
 _ffhq256 = {
     'display_name':                 'FFHQ256',
 
-    'batch_size':                   256,
+    'batch_size':                   512,
     'mini_batch_size':              64,
     'learning_rate':                1e-4,
     'max_epochs':                   100,
@@ -222,29 +222,29 @@ _ffhq256 = {
 
     'level': [
         SimpleNamespace(**{
-            'channel':              256,
+            'channel':              512,
             'kernel_size':          5,
             'nb_block':             4,
             'nb_res_block':         4,
-            'nb_res_channel':       256,
+            'nb_res_channel':       1024,
             'attention':            True,
             'dropout':              0.1,
             
-            'nb_cond_res_block':    3,
+            'nb_cond_res_block':    10,
             'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
         }),
         SimpleNamespace(**{
-            'channel':              256,
+            'channel':              512,
             'kernel_size':          5,
             'nb_block':             4,
             'nb_res_block':         4,
-            'nb_res_channel':       256,
+            'nb_res_channel':       1024,
             'attention':            True,
             'dropout':              0.1,
 
-            'nb_out_res_block':     0,
+            'nb_out_res_block':     10,
         }),
     ]
 }
@@ -264,28 +264,14 @@ _ffhq1024 = {
         SimpleNamespace(**{
             'channel':              512,
             'kernel_size':          5,
-            'nb_block':             8,
-            'nb_res_block':         4,
-            'nb_res_channel':       1024,
+            'nb_block':             4,
+            'nb_res_block':         2,
+            'nb_res_channel':       256,
             'attention':            False, 
             'dropout':              0.2,
             
-            'nb_cond_res_block':    6,
-            'nb_cond_res_channel':  512,
-
-            'nb_out_res_block':     0,
-        }),
-        SimpleNamespace(**{
-            'channel':              512,
-            'kernel_size':          5,
-            'nb_block':             8,
-            'nb_res_block':         4,
-            'nb_res_channel':       1024,
-            'attention':            False,
-            'dropout':              0.3,
-
-            'nb_cond_res_block':    6,
-            'nb_cond_res_channel':  512,
+            'nb_cond_res_block':    8,
+            'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
         }),
@@ -294,7 +280,21 @@ _ffhq1024 = {
             'kernel_size':          5,
             'nb_block':             6,
             'nb_res_block':         4,
-            'nb_res_channel':       2048,
+            'nb_res_channel':       256,
+            'attention':            False,
+            'dropout':              0.3,
+
+            'nb_cond_res_block':    8,
+            'nb_cond_res_channel':  256,
+
+            'nb_out_res_block':     0,
+        }),
+        SimpleNamespace(**{
+            'channel':              512,
+            'kernel_size':          5,
+            'nb_block':             5,
+            'nb_res_block':         4,
+            'nb_res_channel':       512,
             'attention':            True,
             'dropout':              0.4,
 
