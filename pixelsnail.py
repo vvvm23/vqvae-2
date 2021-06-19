@@ -238,6 +238,7 @@ class PixelSnail(nn.Module):
         self.shift_right = lambda x, size=1: F.pad(x, [size,0,0,0])[:, :, :, :x.shape[3]]
 
     # cache is used to increase speed of sampling
+    @torch.cuda.amp.autocast()
     def forward(self, x, cs = None, cache = None):
         if cache is None:
             cache = {}

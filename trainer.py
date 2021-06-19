@@ -105,7 +105,7 @@ class PixelTrainer:
         self.update_frequency = math.ceil(cfg.batch_size / cfg.mini_batch_size)
         self.train_steps = 0
 
-    @torch.cuda.amp.autocast()
+    # @torch.cuda.amp.autocast()
     def _calculate_loss(self, x: torch.LongTensor, condition):
         x = x.to(self.device)
         condition = [c.to(self.device) for c in condition]
