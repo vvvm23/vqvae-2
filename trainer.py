@@ -14,7 +14,11 @@ class VQVAETrainer:
                     embed_dim=cfg.embed_dim, 
                     nb_entries=cfg.nb_entries, 
                     nb_levels=cfg.nb_levels, 
-                    scaling_rates=cfg.scaling_rates).to(self.device)
+                    scaling_rates=cfg.scaling_rates)
+        if torch.cuda.device_count() > 1:
+            self.net = torch.nn.DataParallel(self.net)
+        self.net = self.net.to(self.device)
+
         self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
         self.opt.zero_grad()
 
@@ -88,7 +92,10 @@ class PixelTrainer:
 
             nb_out_res_block =      lcfg.nb_out_res_block,
             attention =             lcfg.attention,
-        ).to(self.device)
+        )
+        if torch.cuda.device_count() > 1:
+            self.net = torch.nn.DataParallel(self.net)
+        self.net = self.net.to(self.device)
 
         self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
         self.opt.zero_grad()
