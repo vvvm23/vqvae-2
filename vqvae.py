@@ -150,7 +150,7 @@ class CodeLayer(HelperModule):
 class Upscaler(HelperModule):
     def build(self,
             embed_dim: int,
-            scaling_rates: list[int],
+            scaling_rates: list,
         ):
 
         self.stages = nn.ModuleList()
@@ -180,7 +180,7 @@ class VQVAE(HelperModule):
             nb_levels: int                  = 3,
             embed_dim: int                  = 64,
             nb_entries: int                 = 512,
-            scaling_rates: list[int]        = [8, 4, 2]
+            scaling_rates: list             = [8, 4, 2]
         ):
         self.nb_levels = nb_levels
         assert len(scaling_rates) == nb_levels, "Number of scaling rates not equal to number of levels!"

@@ -150,13 +150,13 @@ _kmnist = {
 }
 
 HPS_VQVAE = {
-    'ffhq1024':             SimpleNamespace(**(_common | _ffhq1024)),
-    'ffhq1024-large':       SimpleNamespace(**(_common | _ffhq1024_large)),
-    'ffhq256':              SimpleNamespace(**(_common | _ffhq256)),
-    'ffhq128':              SimpleNamespace(**(_common | _ffhq128)),
-    'cifar10':              SimpleNamespace(**(_common | _cifar10)),
-    'mnist':                SimpleNamespace(**(_common | _mnist)),
-    'kmnist':               SimpleNamespace(**(_common | _kmnist)),
+    'ffhq1024':             SimpleNamespace(**(dict(list(_common.items()) + list(_ffhq1024.items())))),
+    'ffhq1024-large':       SimpleNamespace(**(dict(list(_common.items()) + list(_ffhq1024_large.items())))),
+    'ffhq256':              SimpleNamespace(**(dict(list(_common.items()) + list(_ffhq256.items())))),
+    'ffhq128':              SimpleNamespace(**(dict(list(_common.items()) + list(_ffhq128.items())))),
+    'cifar10':              SimpleNamespace(**(dict(list(_common.items()) + list(_cifar10.items())))),
+    'mnist':                SimpleNamespace(**(dict(list(_common.items()) + list(_mnist.items())))),
+    'kmnist':               SimpleNamespace(**(dict(list(_common.items()) + list(_kmnist.items())))),
 }
 
 """
@@ -304,7 +304,7 @@ _ffhq1024 = {
 }
 
 HPS_PIXEL = {
-    'cifar10':          SimpleNamespace(**(_common | _cifar10)),
-    'ffhq256':          SimpleNamespace(**(_common | _ffhq256)),
-    'ffhq1024':         SimpleNamespace(**(_common | _ffhq1024)),
+    'cifar10':          SimpleNamespace(**(dict(list(_common.items()) + list(_cifar10.items())))),
+    'ffhq256':          SimpleNamespace(**(dict(list(_common.items()) + list(_ffhq256.items())))),
+    'ffhq1024':         SimpleNamespace(**(dict(list(_common.items()) + list(_ffhq1024.items())))),
 }
