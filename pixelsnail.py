@@ -248,12 +248,10 @@ class PixelSnail(nn.Module):
         return y
 
     # cache is used to increase speed of sampling
-    @torch.cuda.amp.autocast()
     def forward(self, x, cs = None, cache = None):
         if cache is None:
             cache = {}
         batch, height, width = x.shape
-        # x = F.one_hot(x, self.nb_class).permute(0, 3, 1, 2).type_as(self.bg)
         y = self._one_hot(x)
        
         horz = self.shift_down(self.horz_conv(y))
@@ -267,16 +265,10 @@ class PixelSnail(nn.Module):
                 cs = cache['condition']
                 cs = cs[:, :, :height, :]
             else:
-                # up_fn = transforms.Resize((height, width), VF.InterpolationMode.NEAREST)
-                # cs = [F.one_hot(c, self.nb_class).view(batch, self.nb_class, c.shape[1], c.shape[2]).type_as(self.bg) for c in cs]
-                # cs = [F.one_hot(c, self.nb_class).permute(0, 3, 1, 2).type_as(self.bg) for c in cs]
                 cs = [self._one_hot(c) for c in cs]
                 cs = [self.cond_in_net[i](c) for i, c in enumerate(cs)]
                 cs = [F.interpolate(c, size=(height, width)) for c in cs]
                 cs = torch.cat(cs, dim=1)
-                # cs = [F.one_hot(c, self.nb_class).view(batch, -1, c.shape[1], c.shape[2]).float() for c in cs]
-                # cs = [F.interpolate(c, size=(height, width)) for c in cs]
-                # cs = torch.cat(cs, dim=1)
                 cs = self.cond_net(cs)
                 cache['condition'] = cs.detach().clone()
                 cs = cs[:, :, :height, :]

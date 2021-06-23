@@ -100,22 +100,17 @@ class PixelTrainer:
 
         self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
         self.opt.zero_grad()
-        
-        self.scaler = torch.cuda.amp.GradScaler(enabled=not args.no_amp)
 
         self.update_frequency = math.ceil(cfg.batch_size / cfg.mini_batch_size)
         self.train_steps = 0
 
-    @torch.cuda.amp.autocast()
     def _calculate_loss(self, x: torch.LongTensor, condition):
         x = x.to(self.device)
         condition = [c.to(self.device) for c in condition]
         y, _ = self.net(x, cs=condition)
-        # print(y[0, :, 0, 0])
-        # print(x[0,0,0])
-        # print(F.softmax(y[0, :, 0, 0]))
+
+        # for some reason, setting reduction='none' THEN doing mean prevents inf loss during AMP
         loss = F.cross_entropy(y, x, reduction='none').mean()
-        # loss = loss.mean()
 
         y_max = torch.argmax(y, dim=1)
         accuracy = (y_max == x).sum() / torch.numel(x)
@@ -123,14 +118,17 @@ class PixelTrainer:
         return loss, accuracy
 
     def _update_parameters(self):
-        self.scaler.step(self.opt)
+        self.optim.step()
         self.opt.zero_grad()
-        self.scaler.update()
+        # self.scaler.step(self.opt)
+        # self.opt.zero_grad()
+        # self.scaler.update()
     
     def train_step(self, x: torch.LongTensor, condition):
         self.net.train()
         loss, accuracy = self._calculate_loss(x, condition)
-        self.scaler.scale(loss / self.update_frequency).backward()
+        # self.scaler.scale(loss / self.update_frequency).backward()
+        (loss / self.update_frequency).backward()
 
         self.train_steps += 1
         if self.train_steps % self.update_frequency == 0:
