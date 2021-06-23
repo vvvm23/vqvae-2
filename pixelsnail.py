@@ -216,7 +216,7 @@ class PixelSnail(nn.Module):
         coord_y = (torch.arange(width) - width / 2) / width
         coord_y = coord_y.view(1, 1, 1, width).expand(1, 1, height, width)
 
-        self.register_buffer('bg', torch.cat([coord_x, coord_y], 1)) 
+        self.register_buffer('bg', torch.cat([coord_x, coord_y], 1).half()) 
 
         self.blks = nn.ModuleList([
             PixelBlock(channel, res_channel, kernel_size, nb_res_block, dropout=dropout, condition_dim=cond_res_channel, attention=attention) 
@@ -241,18 +241,23 @@ class PixelSnail(nn.Module):
         self.shift_down = lambda x, size=1: F.pad(x, [0,0,size,0])[:, :, :x.shape[2], :]
         self.shift_right = lambda x, size=1: F.pad(x, [size,0,0,0])[:, :, :, :x.shape[3]]
 
+    def _one_hot(self, x: torch.LongTensor):
+        batch, height, width = x.shape
+        y = torch.zeros(batch, self.nb_class, height, width).to(x.device)
+        y[torch.arange(batch).view(-1, 1, 1), x] = 1
+        return y
+
     # cache is used to increase speed of sampling
     @torch.cuda.amp.autocast()
     def forward(self, x, cs = None, cache = None):
         if cache is None:
             cache = {}
         batch, height, width = x.shape
-        x = F.one_hot(x, self.nb_class).permute(0, 3, 1, 2).type_as(self.bg)
-        print(x.dtype)
-        exit()
-        
-        horz = self.shift_down(self.horz_conv(x))
-        vert = self.shift_right(self.vert_conv(x))
+        # x = F.one_hot(x, self.nb_class).permute(0, 3, 1, 2).type_as(self.bg)
+        y = self._one_hot(x)
+       
+        horz = self.shift_down(self.horz_conv(y))
+        vert = self.shift_right(self.vert_conv(y))
         y = horz + vert
 
         bg = self.bg[:, :, :height, :].expand(batch, 2, height, width)
@@ -264,7 +269,8 @@ class PixelSnail(nn.Module):
             else:
                 # up_fn = transforms.Resize((height, width), VF.InterpolationMode.NEAREST)
                 # cs = [F.one_hot(c, self.nb_class).view(batch, self.nb_class, c.shape[1], c.shape[2]).type_as(self.bg) for c in cs]
-                cs = [F.one_hot(c, self.nb_class).permute(0, 3, 1, 2).type_as(self.bg) for c in cs]
+                # cs = [F.one_hot(c, self.nb_class).permute(0, 3, 1, 2).type_as(self.bg) for c in cs]
+                cs = [self._one_hot(c) for c in cs]
                 cs = [self.cond_in_net[i](c) for i, c in enumerate(cs)]
                 cs = [F.interpolate(c, size=(height, width)) for c in cs]
                 cs = torch.cat(cs, dim=1)
