@@ -82,6 +82,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-tqdm', action='store_true')
     parser.add_argument('--no-save', action='store_true') # not implemented
     parser.add_argument('--no-amp', action='store_true') # not implemented
+    parser.add_argument('--no-norm', action='store_true')
     parser.add_argument('--save-jpg', action='store_true')
     parser.add_argument('--temperature', type=float, default=1.0)
     args = parser.parse_args()
@@ -102,7 +103,6 @@ if __name__ == '__main__':
     pixelsnails = [load_pixelsnail(p, hps_pixel, l, 
                     latent_shapes[l], device) for l, p in enumerate(args.pixelsnail_path)]
 
-    
     codes = []
     for l in range(hps_vqvae.nb_levels-1, -1, -1):
         print(f"> Sampling from PixelSnail level {l}")
@@ -116,4 +116,7 @@ if __name__ == '__main__':
     save_path = f"sample-{save_id}.{'jpg' if args.save_jpg else 'png'}"
     print(f"> Saving image to {save_path}")
     print(img.shape)
-    save_image(img, save_path, nrow=int(sqrt(args.nb_samples)), normalize=True, value_range=(-1,1))
+    if args.no_norm:
+        save_image(img, save_path, )
+    else:
+        save_image(img, save_path, nrow=int(sqrt(args.nb_samples)), normalize=True, value_range=(-1,1))

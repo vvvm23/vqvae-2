@@ -88,6 +88,7 @@ class PixelTrainer:
 
             nb_cond =               nb_cond,
             nb_cond_res_block =     lcfg.nb_cond_res_block if nb_cond else 0,
+            nb_cond_in_res_block =  lcfg.nb_cond_in_res_block if nb_cond else 0,
             cond_res_channel =      lcfg.nb_cond_res_channel if nb_cond else 0,
 
             nb_out_res_block =      lcfg.nb_out_res_block,
@@ -110,7 +111,11 @@ class PixelTrainer:
         x = x.to(self.device)
         condition = [c.to(self.device) for c in condition]
         y, _ = self.net(x, cs=condition)
-        loss = F.cross_entropy(y, x)
+        # print(y[0, :, 0, 0])
+        # print(x[0,0,0])
+        # print(F.softmax(y[0, :, 0, 0]))
+        loss = F.cross_entropy(y, x, reduction='none').mean()
+        # loss = loss.mean()
 
         y_max = torch.argmax(y, dim=1)
         accuracy = (y_max == x).sum() / torch.numel(x)

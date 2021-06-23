@@ -22,7 +22,7 @@ from helper import HelperModule
 class WNConv2d(nn.Conv2d):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        torch.nn.utils.weight_norm(self)
+        self = torch.nn.utils.weight_norm(self)
         self.forward = super().forward
 
 class CausalConv2d(HelperModule):
@@ -103,6 +103,7 @@ class CausalAttention(HelperModule):
                         query_channel + key_channel + key_channel,
                         channel*3
                     )
+        self.to_qkv = torch.nn.utils.weight_norm(self.to_qkv)
 
         self.head_dim = channel // nb_heads
         self.nb_heads = nb_heads
@@ -194,7 +195,8 @@ class PixelSnail(nn.Module):
             res_channel, 
             dropout = 0.1, 
             nb_cond = 0,
-            nb_cond_res_block = 0, 
+            nb_cond_res_block = 0,
+            nb_cond_in_res_block = 0,
             cond_res_channel = 0, 
             cond_res_kernel = 3, 
             nb_out_res_block = 0,
@@ -224,6 +226,10 @@ class PixelSnail(nn.Module):
         
         if nb_cond > 0:
             self.cond_net = CondResNet(nb_cond*nb_class, cond_res_channel, cond_res_kernel, nb_cond_res_block)
+            self.cond_in_net = nn.ModuleList([
+                CondResNet(nb_class, nb_class, cond_res_kernel, nb_cond_in_res_block) if nb_cond_in_res_block > 0 else nn.Identity()
+            for _ in range(nb_cond - 1)])
+            self.cond_in_net.append(nn.Identity())
         self.nb_cond = nb_cond
 
         out = []
@@ -256,10 +262,12 @@ class PixelSnail(nn.Module):
                 cs = cache['condition']
                 cs = cs[:, :, :height, :]
             else:
-                up_fn = transforms.Resize((height, width), VF.InterpolationMode.NEAREST)
-                cs = [up_fn(c).unsqueeze(1) for c in cs]
+                # up_fn = transforms.Resize((height, width), VF.InterpolationMode.NEAREST)
+                # cs = [F.one_hot(c, self.nb_class).view(batch, self.nb_class, c.shape[1], c.shape[2]).type_as(self.bg) for c in cs]
+                cs = [F.one_hot(c, self.nb_class).permute(0, 3, 1, 2).type_as(self.bg) for c in cs]
+                cs = [self.cond_in_net[i](c) for i, c in enumerate(cs)]
+                cs = [F.interpolate(c, size=(height, width)) for c in cs]
                 cs = torch.cat(cs, dim=1)
-                cs = F.one_hot(cs, self.nb_class).view(batch, -1, height, width).type_as(self.bg)
                 # cs = [F.one_hot(c, self.nb_class).view(batch, -1, c.shape[1], c.shape[2]).float() for c in cs]
                 # cs = [F.interpolate(c, size=(height, width)) for c in cs]
                 # cs = torch.cat(cs, dim=1)

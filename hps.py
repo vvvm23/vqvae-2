@@ -169,12 +169,53 @@ _common = {
     'nb_workers':               4,
 }
 
+_mnist = {
+    'display_name':                 'MNIST',
+
+    'batch_size':                   256,
+    'mini_batch_size':              256,
+    'learning_rate':                3e-4,
+    'max_epochs':                   100,
+
+    'scaling_rates':                [2, 2],
+    'nb_entries':                   128,
+
+    'level': [
+        SimpleNamespace(**{
+            'channel':              128,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            True,
+            'dropout':              0.1,
+            
+            'nb_cond_res_block':    4,
+            'nb_cond_res_channel':  128,
+            'nb_cond_in_res_block': 3,
+
+            'nb_out_res_block':     0,
+        }),
+        SimpleNamespace(**{
+            'channel':              128,
+            'kernel_size':          5,
+            'nb_block':             4,
+            'nb_res_block':         4,
+            'nb_res_channel':       256,
+            'attention':            True,
+            'dropout':              0.1,
+
+            'nb_out_res_block':     0,
+        }),
+    ]
+}
+
 _cifar10 = {
     'display_name':                 'CIFAR10',
 
     'batch_size':                   512,
     'mini_batch_size':              128,
-    'learning_rate':                1e-4,
+    'learning_rate':                3e-4,
     'max_epochs':                   100,
 
     'scaling_rates':                [2, 2],
@@ -191,6 +232,7 @@ _cifar10 = {
             'dropout':              0.1,
             
             'nb_cond_res_block':    3,
+            'nb_cond_in_res_block': 3,
             'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
@@ -231,6 +273,7 @@ _ffhq256 = {
             'dropout':              0.1,
             
             'nb_cond_res_block':    10,
+            'nb_cond_in_res_block': 3,
             'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
@@ -271,6 +314,7 @@ _ffhq1024 = {
             'dropout':              0.2,
             
             'nb_cond_res_block':    8,
+            'nb_cond_in_res_block': 3,
             'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
@@ -285,6 +329,7 @@ _ffhq1024 = {
             'dropout':              0.3,
 
             'nb_cond_res_block':    8,
+            'nb_cond_in_res_block': 3,
             'nb_cond_res_channel':  256,
 
             'nb_out_res_block':     0,
@@ -304,6 +349,7 @@ _ffhq1024 = {
 }
 
 HPS_PIXEL = {
+    'mnist':            SimpleNamespace(**(_common | _mnist)),
     'cifar10':          SimpleNamespace(**(_common | _cifar10)),
     'ffhq256':          SimpleNamespace(**(_common | _ffhq256)),
     'ffhq1024':         SimpleNamespace(**(_common | _ffhq1024)),
