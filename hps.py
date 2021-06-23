@@ -256,7 +256,7 @@ _ffhq256 = {
 
     'batch_size':                   512,
     'mini_batch_size':              64,
-    'learning_rate':                1e-4,
+    'learning_rate':                3e-4,
     'max_epochs':                   100,
 
     'scaling_rates':                [2, 2],
@@ -269,10 +269,10 @@ _ffhq256 = {
             'nb_block':             4,
             'nb_res_block':         4,
             'nb_res_channel':       1024,
-            'attention':            True,
+            'attention':            False,
             'dropout':              0.1,
             
-            'nb_cond_res_block':    10,
+            'nb_cond_res_block':    20,
             'nb_cond_in_res_block': 3,
             'nb_cond_res_channel':  256,
 
@@ -283,11 +283,11 @@ _ffhq256 = {
             'kernel_size':          5,
             'nb_block':             4,
             'nb_res_block':         4,
-            'nb_res_channel':       1024,
+            'nb_res_channel':       2048,
             'attention':            True,
             'dropout':              0.1,
 
-            'nb_out_res_block':     10,
+            'nb_out_res_block':     20,
         }),
     ]
 }
