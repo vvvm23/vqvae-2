@@ -39,6 +39,7 @@ if __name__ == '__main__':
                 nb_levels=cfg.nb_levels, 
                 scaling_rates=cfg.scaling_rates).to(device)
     net.load_state_dict(torch.load(args.path))
+    net.eval()
     print(f"> Number of parameters: {get_parameter_count(net)}")
 
     if args.batch_size:
@@ -47,7 +48,7 @@ if __name__ == '__main__':
     if not args.no_save:
         latent_dir = Path(f"latent-data")
         latent_dir.mkdir(exist_ok=True)
-        dataset_path = latent_dir / f"{save_id}-latent-dataset.pt"
+        dataset_path = latent_dir / f"{args.task}-{save_id}-latent-dataset.pt"
 
     print(f"> Loading {cfg.display_name} dataset")
     (train_loader, test_loader), (train_dataset, test_dataset) = get_dataset(

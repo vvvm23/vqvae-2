@@ -43,7 +43,7 @@ Other useful flags:
 ### Latent Dataset Generation
 Run latent dataset generation using VQ-VAE-2 saved at `path` that was trained on task `task_name`. Defaults to `cifar10`:
 ```
-python generate-latents.py path --task task_name
+python main-latents.py path --task task_name
 ```
 Result is saved in `latent-data` directory.
 
