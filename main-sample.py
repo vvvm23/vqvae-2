@@ -96,6 +96,11 @@ if __name__ == '__main__':
         cfg.mini_batch_size = args.batch_size
     _, *shape  = hps_vqvae.image_shape
 
+    if not args.no_save:
+        sample_dir = Path("samples")
+        sample_dir.mkdir(exist_ok=True)
+        save_path = sample_dir / f"sample-{args.task}-{save_id}.{'jpg' if args.save_jpg else 'png'}"
+
     print("> Loading VQ-VAE-2")
     vqvae = load_vqvae(args.vqvae_path, hps_vqvae, device)
     print("> Loading PixelSnail priors")
@@ -113,10 +118,9 @@ if __name__ == '__main__':
     print(f"> Decoding sampled latent codes using VQ-VAE")
     img = vqvae_decode(vqvae, codes, device)
 
-    save_path = f"sample-{save_id}.{'jpg' if args.save_jpg else 'png'}"
     print(f"> Saving image to {save_path}")
     print(img.shape)
     if args.no_norm:
-        save_image(img, save_path, )
+        save_image(img, save_path, nrow=int(sqrt(args.nb_samples)))
     else:
         save_image(img, save_path, nrow=int(sqrt(args.nb_samples)), normalize=True, value_range=(-1,1))

@@ -216,8 +216,6 @@ class PixelSnail(nn.Module):
         coord_y = (torch.arange(float(width)) - width / 2) / width
         coord_y = coord_y.view(1, 1, 1, width).expand(1, 1, height, width)
 
-        # TODO: might need to generate bg with cacheable buffer, based on shape, so to support different precisions.
-        # TODO: or does it not break mixed? might just cast up
         self.register_buffer('bg', torch.cat([coord_x, coord_y], 1).half()) # TODO: breaks single-precision mode
 
         self.blks = nn.ModuleList([
