@@ -15,8 +15,6 @@ from helper import get_device, get_parameter_count
 from datasets import LatentDataset
 
 if __name__ == '__main__':
-    # torch.autograd.set_detect_anomaly(True)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_path', type=str)
     parser.add_argument('level', type=int)

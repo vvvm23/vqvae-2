@@ -2,12 +2,10 @@
     Based heavily off this implementation: https://github.com/rosinality/vq-vae-2-pytorch/blob/master/pixelsnail.py
 
     Changes:
-        - Some naming conventions are changed (don't use input as a variable!!!)
+        - Some naming conventions are changed (don't use `input` as a variable!!!)
         - support for $n$ conditioning variables.
+        - conditioning stack as recommended by original authors (rather than guesswork)
 """
-from math import sqrt, prod
-from functools import partial, lru_cache
-
 import numpy as np
 import torch
 from torch import nn
@@ -16,6 +14,9 @@ from torch.nn import functional as F
 import torchvision
 import torchvision.transforms.functional as VF 
 from torchvision import transforms
+
+from math import sqrt, prod
+from functools import partial, lru_cache
 
 from helper import HelperModule
 
@@ -172,6 +173,7 @@ class PixelBlock(nn.Module):
 
         return y
 
+# TODO: Rename this to something more generic(?)
 class CondResNet(HelperModule):
     def build(self, in_channel, channel, kernel_size, nb_res_blocks):
         blocks = [WNConv2d(in_channel, channel, kernel_size, padding=kernel_size // 2)]
@@ -208,9 +210,11 @@ class PixelSnail(nn.Module):
 
         assert kernel_size % 2, "Kernel size must be odd"
 
+        # avoids blind spot issue in original PixelCNN
         self.horz_conv = CausalConv2d(nb_class, channel, [kernel_size // 2, kernel_size], padding='down')
         self.vert_conv = CausalConv2d(nb_class, channel, [(kernel_size+1) // 2, kernel_size // 2], padding='downright')
 
+        # builds coordinate embeddings
         coord_x = (torch.arange(height) - height / 2) / height
         coord_x = coord_x.view(1, 1, height, 1).expand(1, 1, height, width)
         coord_y = (torch.arange(width) - width / 2) / width
@@ -218,18 +222,24 @@ class PixelSnail(nn.Module):
 
         self.register_buffer('bg', torch.cat([coord_x, coord_y], 1).half()) 
 
+        # defines list of PixelBlocks
         self.blks = nn.ModuleList([
             PixelBlock(channel, res_channel, kernel_size, nb_res_block, dropout=dropout, condition_dim=cond_res_channel, attention=attention) 
         for _ in range(nb_pixel_block)])
         
+        # if we have conditioning variables, build conditioning stack
         if nb_cond > 0:
+            # combined conditons resnet
             self.cond_net = CondResNet(nb_cond*nb_class, cond_res_channel, cond_res_kernel, nb_cond_res_block)
+            # create smaller conditioning resnet for all but the largest condition
             self.cond_in_net = nn.ModuleList([
                 CondResNet(nb_class, nb_class, cond_res_kernel, nb_cond_in_res_block) if nb_cond_in_res_block > 0 else nn.Identity()
             for _ in range(nb_cond - 1)])
             self.cond_in_net.append(nn.Identity())
+
         self.nb_cond = nb_cond
 
+        # create output residual stack
         out = []
         for _ in range(nb_out_res_block):
             out.append(GatedResBlock(channel, res_channel, 1))
@@ -241,6 +251,7 @@ class PixelSnail(nn.Module):
         self.shift_down = lambda x, size=1: F.pad(x, [0,0,size,0])[:, :, :x.shape[2], :]
         self.shift_right = lambda x, size=1: F.pad(x, [size,0,0,0])[:, :, :, :x.shape[3]]
 
+    # one hot encode function to avoid any explicit casts to float / half
     def _one_hot(self, x: torch.LongTensor):
         batch, height, width = x.shape
         y = torch.zeros(batch, self.nb_class, height, width).to(x.device)
@@ -265,14 +276,15 @@ class PixelSnail(nn.Module):
                 cs = cache['condition']
                 cs = cs[:, :, :height, :]
             else:
-                cs = [self._one_hot(c) for c in cs]
-                cs = [self.cond_in_net[i](c) for i, c in enumerate(cs)]
-                cs = [F.interpolate(c, size=(height, width)) for c in cs]
-                cs = torch.cat(cs, dim=1)
-                cs = self.cond_net(cs)
+                cs = [self._one_hot(c) for c in cs] # one hot encode conditions
+                cs = [self.cond_in_net[i](c) for i, c in enumerate(cs)] # apply smaller resnet where appropriate
+                cs = [F.interpolate(c, size=(height, width)) for c in cs] # interpolate conditions to image size
+                cs = torch.cat(cs, dim=1) # concatenate conditions
+                cs = self.cond_net(cs) # apply larger conditional resnet
                 cache['condition'] = cs.detach().clone()
                 cs = cs[:, :, :height, :]
 
+        # iterate over pixelblocks
         for blk in self.blks:
             y = blk(y, bg, c=cs)
         y = self.out(y)

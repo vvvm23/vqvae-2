@@ -67,9 +67,9 @@ Other useful flags:
 --cpu           # do not use GPU
 --load-path     # resume from saved state on disk
 --batch-size    # overrides batch size in cfg.py, useful for evaluating on larger batch size
+--save-jpg      # save all images as jpg instead of png, useful for extreme resolutions
 --no-tqdm       # disable tqdm status bars
 --no-save       # disables saving of files
---no-amp        # disables using native AMP (Automatic Mixed Precision) operations
 ```
 
 ### Sample Generation 
