@@ -174,7 +174,7 @@ _mnist = {
 
     'batch_size':                   256,
     'mini_batch_size':              256,
-    'learning_rate':                3e-4,
+    'learning_rate':                1e-3,
     'max_epochs':                   100,
 
     'scaling_rates':                [2, 2],

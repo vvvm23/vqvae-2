@@ -52,6 +52,7 @@ class GatedResBlock(nn.Module):
     def __init__(self, in_channel, channel, kernel_size, conv='wnconv2d', dropout=0.1, condition_dim=0, aux_channels=0):
         super().__init__()
 
+        # TODO: change conv keywords to something simpler
         assert conv in ['wnconv2d', 'causal_downright', 'causal'], "Invalid conv argument [wnconv2d, causal_downright, causal]"
         if conv == 'wnconv2d':
             conv_builder = partial(WNConv2d, padding=kernel_size // 2)
@@ -61,15 +62,19 @@ class GatedResBlock(nn.Module):
             conv_builder = partial(CausalConv2d, padding='causal')
 
         self.conv1 = conv_builder(in_channel, channel, kernel_size)
-        self.conv2 = conv_builder(channel, in_channel*2, kernel_size)
+        # self.conv2 = conv_builder(channel, in_channel*2, kernel_size)
+        self.conv2 = conv_builder(channel, in_channel, kernel_size)
         self.drop1 = nn.Dropout(dropout)
 
         if aux_channels > 0:
             self.aux_conv = WNConv2d(aux_channels, channel, 1)
 
         if condition_dim > 0:
-            self.convc = WNConv2d(condition_dim, in_channel*2, 1, bias=False)
-        self.gate = nn.GLU(1) # 0 -> 1 === ReZero -> Residual
+            # self.convc = WNConv2d(condition_dim, in_channel*2, 1, bias=False)
+            self.convc = WNConv2d(condition_dim, in_channel, 1, bias=False)
+            self.alphac = nn.Parameter(torch.tensor(0.0))
+        self.alpha = nn.Parameter(torch.tensor(0.0))
+        # self.gate = nn.GLU(1) 
 
     def forward(self, x, a=None, c=None):
         y = self.conv1(F.elu(x))
@@ -82,9 +87,9 @@ class GatedResBlock(nn.Module):
         y = self.conv2(y)
 
         if c != None and len(c) > 0:
-            y = self.convc(c) + y
-        y = self.gate(y) + x
-        return y
+            y = self.alphac * self.convc(c) + y
+        # y = self.gate(y) + x
+        return self.alpha * F.elu(y) + x 
 
 @lru_cache(maxsize=64)
 def causal_mask(size):
