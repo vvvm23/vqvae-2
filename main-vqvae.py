@@ -85,7 +85,7 @@ if __name__ == '__main__':
         epoch_start_time = time.time()
         pb = tqdm(train_loader, disable=args.no_tqdm)
         for i, (x, _) in enumerate(pb):
-            loss, r_loss, l_loss = trainer.train(x)
+            loss, r_loss, l_loss, _ = trainer.train(x)
             epoch_loss += loss
             epoch_r_loss += r_loss
             epoch_l_loss += l_loss

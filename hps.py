@@ -182,30 +182,30 @@ _mnist = {
 
     'level': [
         SimpleNamespace(**{
-            'channel':              128,
+            'channel':              64,
             'kernel_size':          5,
-            'nb_block':             4,
+            'nb_block':             3,
             'nb_res_block':         4,
-            'nb_res_channel':       256,
+            'nb_res_channel':       128,
             'attention':            True,
             'dropout':              0.1,
             
             'nb_cond_res_block':    4,
             'nb_cond_res_channel':  128,
-            'nb_cond_in_res_block': 3,
+            'nb_cond_in_res_block': 0,
 
             'nb_out_res_block':     0,
         }),
         SimpleNamespace(**{
-            'channel':              128,
+            'channel':              64,
             'kernel_size':          5,
-            'nb_block':             4,
+            'nb_block':             3,
             'nb_res_block':         4,
-            'nb_res_channel':       256,
+            'nb_res_channel':       128,
             'attention':            True,
             'dropout':              0.1,
 
-            'nb_out_res_block':     0,
+            'nb_out_res_block':     4,
         }),
     ]
 }

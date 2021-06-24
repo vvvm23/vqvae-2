@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--task', type=str, default='cifar10')
     parser.add_argument('--load-path', type=str, default=None)
     parser.add_argument('--batch-size', type=int, default=None)
+    parser.add_argument('--save-jpg', action='store_true')
     parser.add_argument('--no-tqdm', action='store_true')
     parser.add_argument('--no-save', action='store_true')
     parser.add_argument('--no-amp', action='store_true') # TODO: Not implemented
@@ -75,7 +76,7 @@ if __name__ == '__main__':
         pb = tqdm(train_loader, disable=args.no_tqdm)
         for i, d in enumerate(pb):
             x, c = d[args.level], d[args.level+1:]
-            loss, accuracy = trainer.train_step(x, c)
+            loss, accuracy, _ = trainer.train(x, c)
             epoch_loss += loss
             epoch_accuracy += accuracy
             pb.set_description(f"training loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")
@@ -85,10 +86,17 @@ if __name__ == '__main__':
         pb = tqdm(test_loader, disable=args.no_tqdm)
         for i, d in enumerate(pb):
             x, c = d[args.level], d[args.level+1:]
-            loss, accuracy = trainer.eval_step(x, c)
+            loss, accuracy, y = trainer.eval(x, c)
             epoch_loss += loss
             epoch_accuracy += accuracy
             pb.set_description(f"evaluation loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")
+
+            if i == 0 and not args.no_save and eid % cfg.image_frequency == 0:
+                img = y.argmax(dim=1).detach().cpu() / cfg.nb_entries
+                x = x / cfg.nb_entries
+                img = torch.cat([img, x], dim=0).unsqueeze(1)
+                save_image(img, img_dir / f"recon-{str(eid).zfill(4)}.{'jpg' if args.save_jpg else 'png'}", nrow=cfg.mini_batch_size)
+
         print(f"> Evaluation loss: {epoch_loss / len(test_loader)} | accuracy: {100.0 * epoch_accuracy / len(test_loader)}%")
 
         if eid % cfg.checkpoint_frequency == 0 and not args.no_save:
