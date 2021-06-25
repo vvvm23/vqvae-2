@@ -15,7 +15,8 @@ This project will not only contain the VQ-VAE-2 architecture, but also an exampl
 prior and latent dataset extraction.
 
 > This project is very much Work-in-Progress.
-> VQ-VAE-2 model is mostly complete. PixelSnail prior models are still experimental.
+> VQ-VAE-2 model is mostly complete. PixelSnail prior models are still experimental
+> and most definitely do not work.
 
 ## Usage
 ### VQ-VAE-2 Usage
@@ -110,7 +111,7 @@ Other useful flags:
 - [X] Accumulated gradient training (for larger batch sizes on limited resources)
 - [X] Samples and checkpoints on FFHQ1024
 - [X] Latent dataset generation
-- [X] Autoregressive prior models / training scripts
+- [ ] Autoregressive prior models / training scripts
 - [X] Full system sampling
 - [ ] Prettier outputs
 - [ ] Output logging
