@@ -10,13 +10,14 @@ from tqdm import tqdm
 from pathlib import Path
 
 from trainer import PixelTrainer
-from hps import HPS_PIXEL as HPS
+from hps import HPS_PIXEL, HPS_VQVAE
 from helper import get_device, get_parameter_count
 from datasets import LatentDataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_path', type=str)
+    parser.add_argument('vqvae_path', type=str)
     parser.add_argument('level', type=int)
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--task', type=str, default='cifar10')
@@ -29,11 +30,14 @@ if __name__ == '__main__':
     parser.add_argument('--evaluate', action='store_true') # TODO: Not implemented
     args = parser.parse_args()
 
-    cfg = HPS[args.task]
+    cfg_pixel = HPS_PIXEL[args.task]
+    cfg_vqvae = HPS_VQVAE[args.task]
+
+    dataset_path = Path(args.dataset_path)
 
     save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     if args.batch_size:
-        cfg.mini_batch_size = args.batch_size
+        cfg_pixel.mini_batch_size = args.batch_size
 
     if not args.no_save:
         runs_dir = Path(f"runs")
@@ -47,27 +51,26 @@ if __name__ == '__main__':
         chk_dir.mkdir(exist_ok=True)
         img_dir.mkdir(exist_ok=True)
         log_dir.mkdir(exist_ok=True)
-
-    # TODO: Currently possible to load dataset of incorrect size. Might lead to OOM if BS is too large
+    
     print("> Loading Latent dataset")
-    dataset = torch.load(args.dataset_path)
-    train_dataset, test_dataset = dataset['train'], dataset['test']
-    train_dataset, test_dataset = LatentDataset(*train_dataset), LatentDataset(*test_dataset)
+    # dataset = torch.load(args.dataset_path)
+    # train_dataset, test_dataset = dataset['train'], dataset['test']
+    train_dataset, test_dataset = LatentDataset(dataset_path / "train"), LatentDataset(dataset_path / "test")
 
-    cfg.code_shape = train_dataset.get_shape(args.level)
+    cfg_pixel.code_shape = train_dataset.get_shape(args.level)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.mini_batch_size, num_workers=cfg.nb_workers, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg_pixel.mini_batch_size, num_workers=cfg_pixel.nb_workers, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg_pixel.mini_batch_size, num_workers=cfg_pixel.nb_workers, shuffle=False)
 
     print("> Initialising Model")
-    trainer = PixelTrainer(cfg, args)
+    trainer = PixelTrainer(cfg_pixel, cfg_vqvae, args)
 
     if args.load_path:
         print(f"> Loading model parameters from checkpoint")
         trainer.load_checkpoint(args.load_path)
 
-    for eid in range(cfg.max_epochs):
-        print(f"> Epoch {eid+1}/{cfg.max_epochs}:")
+    for eid in range(cfg_pixel.max_epochs):
+        print(f"> Epoch {eid+1}/{cfg_pixel.max_epochs}:")
         epoch_loss, epoch_accuracy = 0.0, 0.0
         epoch_start_time = time.time()
 
@@ -89,15 +92,15 @@ if __name__ == '__main__':
             epoch_accuracy += accuracy
             pb.set_description(f"evaluation loss: {epoch_loss / (i+1)} | accuracy: {100.0 * epoch_accuracy / (i+1)}%")
 
-            if i == 0 and not args.no_save and eid % cfg.image_frequency == 0:
-                img = y.argmax(dim=1).detach().cpu() / cfg.nb_entries
-                x = x / cfg.nb_entries
+            if i == 0 and not args.no_save and eid % cfg_pixel.image_frequency == 0:
+                img = y.argmax(dim=1).detach().cpu() / cfg_pixel.nb_entries
+                x = x / cfg_pixel.nb_entries
                 img = torch.cat([img, x], dim=0).unsqueeze(1)
-                save_image(img, img_dir / f"recon-{str(eid).zfill(4)}.{'jpg' if args.save_jpg else 'png'}", nrow=cfg.mini_batch_size)
+                save_image(img, img_dir / f"recon-{str(eid).zfill(4)}.{'jpg' if args.save_jpg else 'png'}", nrow=cfg_pixel.mini_batch_size)
 
         print(f"> Evaluation loss: {epoch_loss / len(test_loader)} | accuracy: {100.0 * epoch_accuracy / len(test_loader)}%")
 
-        if eid % cfg.checkpoint_frequency == 0 and not args.no_save:
+        if eid % cfg_pixel.checkpoint_frequency == 0 and not args.no_save:
             trainer.save_checkpoint(chk_dir / f"pixelsnail-{args.level}-{args.task}-state-dict-{str(eid).zfill(4)}.pt")
 
         print(f"> Epoch time taken: {time.time() - epoch_start_time:.2f} seconds.")

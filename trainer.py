@@ -70,15 +70,14 @@ class VQVAETrainer:
         self.net.load_state_dict(torch.load(path))
 
 class PixelTrainer:
-    def __init__(self, cfg, args):
+    def __init__(self, cfg_pixel, cfg_vqvae, args):
         self.device = get_device(args.cpu)
 
-        lcfg = cfg.level[args.level]
-        nb_cond = len(cfg.level) - args.level - 1
-
-        self.net = PixelSnail(
-            shape =                 cfg.code_shape,
-            nb_class =              cfg.nb_entries,
+        lcfg = cfg_pixel.level[args.level]
+        nb_cond = len(cfg_pixel.level) - args.level - 1
+        self.prior = PixelSnail(
+            shape =                 cfg_pixel.code_shape,
+            nb_class =              cfg_pixel.nb_entries,
             channel =               lcfg.channel,
             kernel_size =           lcfg.kernel_size,
             nb_pixel_block =        lcfg.nb_block,
@@ -89,25 +88,45 @@ class PixelTrainer:
             nb_cond =               nb_cond,
             nb_cond_res_block =     lcfg.nb_cond_res_block if nb_cond else 0,
             nb_cond_in_res_block =  lcfg.nb_cond_in_res_block if nb_cond else 0,
+            cond_embedding_dim =    cfg_vqvae.embed_dim,
             cond_res_channel =      lcfg.nb_cond_res_channel if nb_cond else 0,
 
             nb_out_res_block =      lcfg.nb_out_res_block,
             attention =             lcfg.attention,
-        )
-        if torch.cuda.device_count() > 1:
-            self.net = torch.nn.DataParallel(self.net)
-        self.net = self.net.to(self.device)
+        ).to(self.device)
 
-        self.opt = torch.optim.Adam(self.net.parameters(), lr=cfg.learning_rate)
+        self.opt = torch.optim.Adam(self.prior.parameters(), lr=cfg_pixel.learning_rate)
         self.opt.zero_grad()
 
-        self.update_frequency = math.ceil(cfg.batch_size / cfg.mini_batch_size)
+        self.vqvae = VQVAE(
+            in_channels=cfg_vqvae.in_channels, 
+            hidden_channels=cfg_vqvae.hidden_channels, 
+            embed_dim=cfg_vqvae.embed_dim, 
+            nb_entries=cfg_vqvae.nb_entries, 
+            nb_levels=cfg_vqvae.nb_levels, 
+            scaling_rates=cfg_vqvae.scaling_rates
+        ).to(self.device)
+        
+        self.vqvae.load_state_dict(torch.load(args.vqvae_path))
+        self.vqvae.eval()
+
+        self.update_frequency = math.ceil(cfg_pixel.batch_size / cfg_pixel.mini_batch_size)
         self.train_steps = 0
+
+        self.level = args.level
+
+    # inplace
+    @torch.no_grad()
+    def _dequantize_condition(self, condition):
+        for i, c in enumerate(condition):
+            condition[i] = self.vqvae.codebooks[self.level+i+1].embed_code(condition[i]).permute(0, 3, 1, 2)
 
     def _calculate_loss(self, x: torch.LongTensor, condition):
         x = x.to(self.device)
         condition = [c.to(self.device) for c in condition]
-        y, _ = self.net(x, cs=condition)
+        self._dequantize_condition(condition)
+
+        y, _ = self.prior(x, cs=condition)
 
         # for some reason, setting reduction='none' THEN doing mean prevents inf loss during AMP
         loss = F.cross_entropy(y, x, reduction='none').mean()
@@ -125,7 +144,7 @@ class PixelTrainer:
         # self.scaler.update()
     
     def train(self, x: torch.LongTensor, condition):
-        self.net.train()
+        self.prior.train()
         loss, accuracy, y = self._calculate_loss(x, condition)
         # self.scaler.scale(loss / self.update_frequency).backward()
         (loss / self.update_frequency).backward()
@@ -138,12 +157,12 @@ class PixelTrainer:
 
     @torch.no_grad()
     def eval(self, x: torch.LongTensor, condition):
-        self.net.eval()
+        self.prior.eval()
         loss, accuracy, y = self._calculate_loss(x, condition)
         return loss.item(), accuracy.item(), y
 
     def save_checkpoint(self, path):
-        torch.save(self.net.state_dict(), path)
+        torch.save(self.prior.state_dict(), path)
 
     def load_checkpoint(self, path):
-        self.net.load_state_dict(torch.load(path))
+        self.prior.load_state_dict(torch.load(path))
