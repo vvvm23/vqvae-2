@@ -204,6 +204,7 @@ class PixelSnail(nn.Module):
             nb_cond = 0,
             nb_cond_res_block = 0,
             nb_cond_in_res_block = 0,
+            cond_embedding_dim = 64,
             cond_res_channel = 0, 
             cond_res_kernel = 3, 
             nb_out_res_block = 0,
@@ -235,10 +236,10 @@ class PixelSnail(nn.Module):
         # if we have conditioning variables, build conditioning stack
         if nb_cond > 0:
             # combined conditons resnet
-            self.cond_net = CondResNet(nb_cond*nb_class, cond_res_channel, cond_res_kernel, nb_cond_res_block)
+            self.cond_net = CondResNet(nb_cond*cond_embedding_dim, cond_res_channel, cond_res_kernel, nb_cond_res_block)
             # create smaller conditioning resnet for all but the largest condition
             self.cond_in_net = nn.ModuleList([
-                CondResNet(nb_class, nb_class, cond_res_kernel, nb_cond_in_res_block) if nb_cond_in_res_block > 0 else nn.Identity()
+                CondResNet(cond_embedding_dim, cond_embedding_dim, cond_res_kernel, nb_cond_in_res_block) if nb_cond_in_res_block > 0 else nn.Identity()
             for _ in range(nb_cond - 1)])
             self.cond_in_net.append(nn.Identity())
 
@@ -281,7 +282,6 @@ class PixelSnail(nn.Module):
                 cs = cache['condition']
                 cs = cs[:, :, :height, :]
             else:
-                cs = [self._one_hot(c) for c in cs] # one hot encode conditions
                 cs = [self.cond_in_net[i](c) for i, c in enumerate(cs)] # apply smaller resnet where appropriate
                 cs = [F.interpolate(c, size=(height, width)) for c in cs] # interpolate conditions to image size
                 cs = torch.cat(cs, dim=1) # concatenate conditions
