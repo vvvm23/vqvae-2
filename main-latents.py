@@ -101,7 +101,7 @@ if __name__ == '__main__':
             batch.append([c[si] for c in idx])
 
         for b in batch:
-            b = [bi.cpu().numpy().astype(np.uint16) for bi in b]
+            b = [bi.cpu().numpy().astype(np.int16) for bi in b]
             torch.save(b, train_dataset_path / f"{str(nb_processed).zfill(7)}.pt")
             nb_processed += 1
 
@@ -123,7 +123,7 @@ if __name__ == '__main__':
             batch.append([c[si] for c in idx])
 
         for b in batch:
-            b = [bi.cpu().numpy().astype(np.uint16) for bi in b]
+            b = [bi.cpu().numpy().astype(np.int16) for bi in b]
             torch.save(b, test_dataset_path / f"{str(nb_processed).zfill(7)}.pt")
             nb_processed += 1
 

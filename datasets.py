@@ -67,13 +67,13 @@ class LatentDataset(torch.utils.data.Dataset):
         super().__init__()
         if isinstance(root_path, str):
             root_path = Path(root_path)
-        self.files = root_path.glob('*.pt')
+        self.files = list(root_path.glob('*.pt'))
 
     def __len__(self):
         return len(self.files)
 
     def __getitem__(self, idx):
-        return [torch.from_numpy(i).long() for i in torch.load(self.files[i])]
+        return [torch.from_numpy(i).long() for i in torch.load(self.files[idx])]
 
     def get_shape(self, level):
-        return self.__getitem__(0)[level].shape[1:]
+        return self.__getitem__(0)[level].shape
