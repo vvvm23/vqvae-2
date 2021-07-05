@@ -3,6 +3,8 @@ import torch.nn.functional as F
 
 from torchvision.utils import save_image
 
+import numpy as np
+
 import argparse
 import datetime
 import time
@@ -32,6 +34,7 @@ if __name__ == '__main__':
     device = get_device(args.cpu)
 
     print(f"> Loading VQ-VAE-2 model")
+    vqvae_name = args.path.split('/')[-1].split('.')[0]
     net = VQVAE(in_channels=cfg.in_channels, 
                 hidden_channels=cfg.hidden_channels, 
                 embed_dim=cfg.embed_dim, 
@@ -43,12 +46,20 @@ if __name__ == '__main__':
     print(f"> Number of parameters: {get_parameter_count(net)}")
 
     if args.batch_size:
-        cfg.batch_size = args.batch_size
+        cfg.mini_batch_size = args.batch_size
 
     if not args.no_save:
         latent_dir = Path(f"latent-data")
         latent_dir.mkdir(exist_ok=True)
-        dataset_path = latent_dir / f"{args.task}-{save_id}-latent-dataset.pt"
+
+        dataset_path = latent_dir / f"{args.task}_{vqvae_name}_{save_id}_latent"
+        dataset_path.mkdir()
+
+        train_dataset_path = dataset_path / "train"
+        test_dataset_path = dataset_path / "test"
+
+        train_dataset_path.mkdir()
+        test_dataset_path.mkdir()
 
     print(f"> Loading {cfg.display_name} dataset")
     (train_loader, test_loader), (train_dataset, test_dataset) = get_dataset(
@@ -70,30 +81,55 @@ if __name__ == '__main__':
 
     
     # TODO: Allocating all space into memory at the start. Could run out of memory!
-    print("> Allocating memory to latent datasets")
-    latent_dataset = {
-        'train':    [torch.zeros((train_dataset_len, c, c), dtype=torch.int64) for c in code_dims],
-        'test':     [torch.zeros((test_dataset_len, c, c), dtype=torch.int64) for c in code_dims]
-    }
+    # print("> Allocating memory to latent datasets")
+    # latent_dataset = {
+        # 'train':    [torch.zeros((train_dataset_len, c, c), dtype=torch.int64) for c in code_dims],
+        # 'test':     [torch.zeros((test_dataset_len, c, c), dtype=torch.int64) for c in code_dims]
+    # }
 
     print("> Generating latent train dataset")
     pb = tqdm(train_loader, disable=args.no_tqdm)
+    nb_processed = 0
     for i, (x, _) in enumerate(pb):
         with torch.no_grad(), torch.cuda.amp.autocast():
             x = x.to(device)
             idx = net(x)[-1][::-1]
-        for ci in range(cfg.nb_levels):
-            latent_dataset['train'][ci][i*cfg.batch_size:(i+1)*cfg.batch_size] = idx[ci]
+
+        bs = idx[0].shape[0]
+        batch = []
+        for si in range(bs):
+            batch.append([c[si] for c in idx])
+
+        for b in batch:
+            b = [bi.cpu().numpy().astype(np.uint16) for bi in b]
+            torch.save(b, train_dataset_path / f"{str(nb_processed).zfill(7)}.pt")
+            nb_processed += 1
+
+        # for ci in range(cfg.nb_levels):
+            # latent_dataset['train'][ci][i*cfg.batch_size:(i+1)*cfg.batch_size] = idx[ci]
 
     print("> Generating latent test dataset")
     pb = tqdm(test_loader, disable=args.no_tqdm)
+    nb_processed = 0
     for i, (x, _) in enumerate(pb):
         with torch.no_grad(), torch.cuda.amp.autocast():
             x = x.to(device)
             idx = net(x)[-1][::-1]
-        for ci in range(cfg.nb_levels):
-            latent_dataset['test'][ci][i*cfg.batch_size:(i+1)*cfg.batch_size] = idx[ci]
 
-    if not args.no_save:
-        print("> Saving latent dataset to disk")
-        torch.save(latent_dataset, dataset_path)
+        bs = idx[0].shape[0]
+        batch = []
+
+        for si in range(bs):
+            batch.append([c[si] for c in idx])
+
+        for b in batch:
+            b = [bi.cpu().numpy().astype(np.uint16) for bi in b]
+            torch.save(b, test_dataset_path / f"{str(nb_processed).zfill(7)}.pt")
+            nb_processed += 1
+
+        # for ci in range(cfg.nb_levels):
+            # latent_dataset['test'][ci][i*cfg.batch_size:(i+1)*cfg.batch_size] = idx[ci]
+
+    # if not args.no_save:
+        # print("> Saving latent dataset to disk")
+        # torch.save(latent_dataset, dataset_path)
