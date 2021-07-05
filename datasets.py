@@ -1,6 +1,7 @@
 import torch
-
 import torchvision
+
+from pathlib import Path
 
 def get_dataset(task: str, cfg, shuffle_train=True, shuffle_test=False, return_dataset=False):
     if task in ['ffhq1024','ffhq1024-large']:
@@ -62,15 +63,17 @@ def get_dataset(task: str, cfg, shuffle_train=True, shuffle_test=False, return_d
     return train_loader, test_loader
 
 class LatentDataset(torch.utils.data.Dataset):
-    def __init__(self, *latents):
+    def __init__(self, root_path):
         super().__init__()
-        self.data = latents
+        if isinstance(root_path, str):
+            root_path = Path(root_path)
+        self.files = root_path.glob('*.pt')
 
     def __len__(self):
-        return self.data[0].shape[0]
+        return len(self.files)
 
     def __getitem__(self, idx):
-        return [l[idx] for l in self.data]
+        return [torch.from_numpy(i).long() for i in torch.load(self.files[i])]
 
     def get_shape(self, level):
-        return self.data[level].shape[1:]
+        return self.__getitem__(0)[level].shape[1:]
