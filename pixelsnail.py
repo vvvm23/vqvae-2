@@ -138,7 +138,7 @@ class CausalAttention(HelperModule):
         attn = torch.softmax(attn, dim=3) * start_mask
         attn = self.drop(attn)
 
-        y = (attn @ v).reshape(batch_size, height, width, self.head_dim*self.nb_heads).permute(0, 3, 1, 2)
+        y = (attn @ v).transpose(1, 2).reshape(batch_size, height, width, self.head_dim*self.nb_heads).permute(0, 3, 1, 2)
         return y
 
 class PixelBlock(nn.Module):
