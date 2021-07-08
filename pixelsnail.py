@@ -222,9 +222,9 @@ class PixelSnail(nn.Module):
         self.vert_conv = CausalConv2d(nb_class, channel, [(kernel_size+1) // 2, kernel_size // 2], padding='downright')
 
         # builds coordinate embeddings
-        coord_x = (torch.arange(height) - height / 2) / height
+        coord_x = torch.arange(-0.5, 0.5, 1 / height)
         coord_x = coord_x.view(1, 1, height, 1).expand(1, 1, height, width)
-        coord_y = (torch.arange(width) - width / 2) / width
+        coord_y = torch.arange(-0.5, 0.5, 1 / width)
         coord_y = coord_y.view(1, 1, 1, width).expand(1, 1, height, width)
 
         self.register_buffer('bg', torch.cat([coord_x, coord_y], 1).half()) 
