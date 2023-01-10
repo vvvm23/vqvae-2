@@ -4,10 +4,11 @@ import torch.nn as nn
 from typing import List
 
 from .utils import HelperModule
-from .conv import ResBlock, ConvDown, ConvUp
+from .conv import ConvDown, ConvUp
 from .vq import VQLayer
 
-class VQVAELayer(HelperModule):
+# Regular VQ-VAE without any hierarchical bits
+class VQVAE(HelperModule):
     def build(self):
         pass
 
@@ -23,7 +24,7 @@ class VQVAELayer(HelperModule):
     def forward(self, x):
         pass
 
-class VQVAE(HelperModule):
+class VQVAE2(HelperModule):
     def build(self):
         pass
 

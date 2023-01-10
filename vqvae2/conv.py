@@ -57,6 +57,7 @@ class ConvDown(HelperModule):
     def build(self,
         num_residual_layers: int,
         in_dim: int,
+        out_dim: int,
         residual_dim: int,
         resample_factor: int,
         resample_method: str = 'conv', # 'max', 'conv', 'auto'
@@ -76,11 +77,11 @@ class ConvDown(HelperModule):
         if resample_method == 'conv':
             self.downsample = nn.Sequential(*[
                 nn.Sequential(
-                    nn.Conv2d(in_dim, in_dim, 4, stride=2, padding=1), 
-                    nn.BatchNorm2d(in_dim) if use_batch_norm else nn.Identity(), 
+                    nn.Conv2d(in_dim if i == 0 else out_dim, out_dim, 4, stride=2, padding=1), 
+                    nn.BatchNorm2d(out_dim) if use_batch_norm else nn.Identity(), 
                     activation
                 )
-            for _ in range(log2(resample_factor))])
+            for i in range(log2(resample_factor))])
         elif resample_method == 'max':
             self.downsample = nn.MaxPool2d(resample_factor, stride=resample_factor)
         else:
@@ -88,7 +89,7 @@ class ConvDown(HelperModule):
 
         self.residual = nn.Sequential(*[
             ResidualLayer(
-                in_dim=in_dim, 
+                in_dim=out_dim, 
                 residual_dim=residual_dim,
                 kernel_size=residual_kernel_size,
                 stride=residual_stride,
