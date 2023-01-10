@@ -55,16 +55,16 @@ class ResidualLayer(HelperModule):
 
 class ConvDown(HelperModule):
     def build(self,
-        num_residual_layers: int,
         in_dim: int,
         out_dim: int,
         residual_dim: int,
         resample_factor: int,
+        num_residual_layers: int = 2,
         resample_method: str = 'conv', # 'max', 'conv', 'auto'
         residual_kernel_size: int = 3,
         residual_stride: int = 1,
         residual_padding: int = 1,
-        residual_bias: int = 1,
+        residual_bias: bool = True,
         use_batch_norm: bool = True,
         use_rezero: bool = False,
         activation: Callable = F.silu,
@@ -107,15 +107,15 @@ class ConvDown(HelperModule):
 
 class ConvUp(HelperModule):
     def build(self,
-        num_residual_layers: int,
         in_dim: int,
         residual_dim: int,
         resample_factor: int,
         resample_method: str = 'conv', # 'max', 'conv', 'auto'
+        num_residual_layers: int = 2,
         residual_kernel_size: int = 3,
         residual_stride: int = 1,
         residual_padding: int = 1,
-        residual_bias: int = 1,
+        residual_bias: bool = True,
         use_batch_norm: bool = True,
         use_rezero: bool = False,
         activation: Callable = F.silu,
