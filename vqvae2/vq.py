@@ -1,4 +1,4 @@
-from .helper import HelperModule
+from .utils import HelperModule
 
 class VQLayer(HelperModule):
     def build(self):

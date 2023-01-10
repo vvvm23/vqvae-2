@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from typing import List
 
-from .helper import HelperModule
+from .utils import HelperModule
 from .conv import ResBlock, ConvDown, ConvUp
 from .vq import VQLayer
 
