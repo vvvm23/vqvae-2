@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from typing import List
+from typing import Tuple
 
 from .utils import HelperModule
 from .conv import ConvDown, ConvUp
@@ -31,6 +31,7 @@ class VQVAE(HelperModule):
         activation: nn.Module = nn.SiLU,
         output_activation: nn.Module = nn.Identity
     ):
+        # TODO: store args that will be needed by higher level VQ-VAE-2
         # TODO: refactor arg passing a la lucidrains style
         self.encoder = ConvDown(
             in_dim=in_dim,
@@ -97,8 +98,11 @@ class VQVAE(HelperModule):
         return self.decode(z), idx, diff
 
 class VQVAE2(HelperModule):
-    def build(self):
-        pass
+    def build(self,
+        vqvaes: Tuple[VQVAE]
+    ):
+        self.num_levels = len(vqvaes)
+        self.vqvaes = nn.ModuleList(*vqvaes)
 
     def encode(self, x):
         pass
