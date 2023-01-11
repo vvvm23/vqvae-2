@@ -18,7 +18,7 @@ class VQLayer(HelperModule):
         self.codebook_size = codebook_size
         self.decay = decay
         self.eps = eps
-        self.conv_in = nn.Conv2d(in_dim, embedding_dim, 1) # TODO: replace with linear?
+        self.conv_in = nn.Conv2d(in_dim, embedding_dim, 1) 
 
         # TODO: smarter init?
         embeddings = torch.randn(embedding_dim, codebook_size, dtype=embedding_dtype)
@@ -35,8 +35,7 @@ class VQLayer(HelperModule):
             - 2 * z @ self.embeddings
             + self.embeddings.pow(2).sum(dim=0, keepdim=True) # TODO: can this square be cached using reparam?
         )
-        print(cluster_distances.shape)
-        _, embedding_idx = (-cluster_distances).max(dim=-1) # TODO: check if this -1 is correct
+        _, embedding_idx = (-cluster_distances).max(dim=-1)
 
         embedding_onehot = F.one_hot(embedding_idx, self.codebook_size).to(z.dtype) # TODO: is onehot needed in eval mode?
         
