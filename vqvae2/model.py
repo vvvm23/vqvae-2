@@ -34,7 +34,7 @@ class VQVAE(HelperModule):
         # TODO: refactor arg passing a la lucidrains style
         self.encoder = ConvDown(
             in_dim=in_dim,
-            out_dim=hidden_dim,
+            hidden_dim=hidden_dim,
             residual_dim=residual_dim,
             resample_factor=resample_factor,
             num_residual_layers=num_residual_layers,
@@ -94,7 +94,7 @@ class VQVAE(HelperModule):
 
     def forward(self, x):
         z, idx, diff = self.encode(x)
-        return self.decode(z)
+        return self.decode(z), idx, diff
 
 class VQVAE2(HelperModule):
     def build(self):
@@ -111,3 +111,15 @@ class VQVAE2(HelperModule):
 
     def forward(self):
         pass
+
+if __name__ == '__main__':
+    vqvae = VQVAE(3, 256, 256, 256, residual_dim=256)
+    count = sum(p.numel() for p in vqvae.parameters() if p.requires_grad)
+    print(f"Number of parameters: {count:,}")
+
+    x = torch.randn(4, 3, 32, 32)
+    y, idx, diff = vqvae(x)
+    print(x.shape)
+    print(y.shape)
+    print(idx.shape)
+    print(diff)
