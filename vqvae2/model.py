@@ -80,16 +80,20 @@ class VQVAE(HelperModule):
         )
 
     def encode(self, x):
-        raise NotImplementedError
+        z = self.encoder(x)
+        return self.codebook(z)
 
-    def decode(self, x):
-        raise NotImplementedError
+    def decode(self, z):
+        z = self.decoder(z)
+        return self.out_conv(z)
 
-    def decode_discrete(self, x):
-        raise NotImplementedError
+    def decode_discrete(self, idx):
+        z = F.embedding(idx, self.embeddings.T)
+        return self.decode(z)
 
     def forward(self, x):
-        raise NotImplementedError
+        z, idx, diff = self.encode(x)
+        return self.decode(z)
 
 class VQVAE2(HelperModule):
     def build(self):

@@ -61,4 +61,4 @@ class VQLayer(HelperModule):
         diff = (q.detach() - x).pow(2).mean() # TODO: is `diff` needed in eval mode?
         q = x + (q - x).detach() # allows gradient flow through `x`
 
-        return rearrange(q, 'N h w c -> N c h w'), diff, embedding_idx
+        return rearrange(q, 'N h w c -> N c h w'), embedding_idx, diff
