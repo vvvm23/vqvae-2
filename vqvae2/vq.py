@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from einops import rearrange, reshape
+from einops import rearrange
 
 from .utils import HelperModule
 
@@ -28,7 +28,8 @@ class VQLayer(HelperModule):
 
     # TODO: generally, check for efficiency and correctness
     def forward(self, x):
-        z = reshape(self.conv_in(x), 'N c h w -> (N h w) c')
+        x = rearrange(self.conv_in(x), 'N c h w -> N h w c')
+        z = rearrange(x, 'N h w c -> (N h w) c')
         cluster_distances = (
             z.pow(2).sum(dim=-1, keepdim=True)
             - 2 * z @ self.embeddings
@@ -39,7 +40,7 @@ class VQLayer(HelperModule):
 
         embedding_onehot = F.one_hot(embedding_idx, self.codebook_size).to(z.dtype) # TODO: is onehot needed in eval mode?
         
-        embedding_idx = reshape(embedding_idx, '(N h w) -> N h w', N=x.shape[0], h=x.shape[-2], w=x.shape[-1])
+        embedding_idx = rearrange(embedding_idx, '(N h w) -> N h w', N=x.shape[0], h=x.shape[1], w=x.shape[2])
         q = F.embedding(embedding_idx, self.embeddings.T)
 
         if self.training:
@@ -58,7 +59,16 @@ class VQLayer(HelperModule):
 
             self.embeddings.data.copy_(self.embeddings_avg / cluster_sizes)
 
-        diff = (q.detach() - x).pow(2).mean() # TODO: is `diff` needed in eval mode?
+        diff = (q.detach() - x).pow(2).mean() 
         q = x + (q - x).detach() # allows gradient flow through `x`
 
         return rearrange(q, 'N h w c -> N c h w'), embedding_idx, diff
+
+
+if __name__ == '__main__':
+    codebook = VQLayer(16, 8, 1024)
+    x = torch.randn(4, 16, 14, 14)
+
+    z, idx, diff = codebook(x)
+
+    print(x.shape, z.shape)

@@ -59,7 +59,8 @@ class VQVAE(HelperModule):
 
         # TODO: refactor args here too
         self.decoder = ConvUp(
-            in_dim=hidden_dim,
+            in_dim=codebook_dim,
+            hidden_dim=hidden_dim,
             residual_dim=residual_dim,
             resample_factor=resample_factor,
             num_residual_layers=num_residual_layers,
@@ -75,7 +76,7 @@ class VQVAE(HelperModule):
 
         # TODO: parameterize?
         self.out_conv = nn.Sequential(
-            nn.Conv2d(hidden_dim, hidden_dim, 3, stride=1, padding=1),
+            nn.Conv2d(hidden_dim, in_dim, 3, stride=1, padding=1),
             output_activation(),
         )
 

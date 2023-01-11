@@ -56,7 +56,7 @@ class ResidualLayer(HelperModule):
 class ConvDown(HelperModule):
     def build(self,
         in_dim: int,
-        out_dim: int,
+        hidden_dim: int,
         residual_dim: int,
         resample_factor: int,
         num_residual_layers: int = 2,
@@ -77,8 +77,8 @@ class ConvDown(HelperModule):
         if resample_method == 'conv':
             self.downsample = nn.Sequential(*[
                 nn.Sequential(
-                    nn.Conv2d(in_dim if i == 0 else out_dim, out_dim, 4, stride=2, padding=1), 
-                    nn.BatchNorm2d(out_dim) if use_batch_norm else nn.Identity(), 
+                    nn.Conv2d(in_dim if i == 0 else hidden_dim, hidden_dim, 4, stride=2, padding=1), 
+                    nn.BatchNorm2d(hidden_dim) if use_batch_norm else nn.Identity(), 
                     activation()
                 )
             for i in range(int(log2(resample_factor)))])
@@ -89,7 +89,7 @@ class ConvDown(HelperModule):
 
         self.residual = nn.Sequential(*[
             ResidualLayer(
-                in_dim=out_dim, 
+                in_dim=hidden_dim, 
                 residual_dim=residual_dim,
                 kernel_size=residual_kernel_size,
                 stride=residual_stride,
@@ -108,6 +108,7 @@ class ConvDown(HelperModule):
 class ConvUp(HelperModule):
     def build(self,
         in_dim: int,
+        hidden_dim: int,
         residual_dim: int,
         resample_factor: int,
         resample_method: str = 'conv', # 'max', 'conv', 'auto'
@@ -122,9 +123,14 @@ class ConvUp(HelperModule):
     ):
         assert log2(resample_factor).is_integer(), f"Downsample factor must be a power of 2! Got '{resample_factor}'"
 
+        self.conv_in = nn.Sequential(
+            nn.Conv2d(in_dim, hidden_dim, 1, stride=1),
+            activation()
+        )
+
         self.residual = nn.Sequential(*[
             ResidualLayer(
-                in_dim=in_dim, 
+                in_dim=hidden_dim, 
                 residual_dim=residual_dim,
                 kernel_size=residual_kernel_size,
                 stride=residual_stride,
@@ -142,8 +148,8 @@ class ConvUp(HelperModule):
         if resample_method == 'conv':
             self.upsample = nn.Sequential(*[
                 nn.Sequential(
-                    nn.ConvTranspose2d(in_dim, in_dim, 4, stride=2, padding=1), 
-                    nn.BatchNorm2d(in_dim) if use_batch_norm else nn.Identity(), 
+                    nn.ConvTranspose2d(hidden_dim, hidden_dim, 4, stride=2, padding=1), 
+                    nn.BatchNorm2d(hidden_dim) if use_batch_norm else nn.Identity(), 
                     activation()
                 )
             for _ in range(int(log2(resample_factor)))])
@@ -153,15 +159,18 @@ class ConvUp(HelperModule):
             raise ValueError(f"Unknown resample method '{resample_method}'!")
 
     def forward(self, x):
+        x = self.conv_in(x)
         x = self.residual(x)
         return self.upsample(x)
 
 if __name__ == '__main__':
-    down = ConvDown(16, 16, 32, 2)
-    up = ConvUp(16, 32, 2)
+    down = ConvDown(8, 16, 32, 2)
+    up = ConvUp(8, 16, 32, 2)
 
-    x = torch.randn(4, 16, 32, 32)
+    x = torch.randn(4, 8, 32, 32)
     z = down(x)
-    y = up(z)
+    y = up(z[:, :8])
 
-    assert x.shape == y.shape
+    print(x.shape)
+    print(z.shape)
+    print(y.shape)
