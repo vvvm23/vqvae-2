@@ -30,9 +30,9 @@ class ResidualLayer(HelperModule):
         bias: bool = True,
         use_batch_norm: bool = True,
         use_rezero: bool = False,
-        activation: Callable = F.silu
+        activation: nn.Module = nn.SiLU
     ):
-        self.activation = activation
+        self.activation = activation()
         layers = nn.Sequential(
             nn.Conv2d(in_dim, residual_dim, kernel_size, 
                 stride=stride, 
@@ -40,13 +40,13 @@ class ResidualLayer(HelperModule):
                 bias=bias
             ),
             nn.BatchNorm2d(residual_dim) if use_batch_norm else nn.Identity(),
-            activation,
+            activation(),
 
             nn.Conv2d(residual_dim, in_dim, 1,
                 stride=1,
                 bias=bias
             ),
-            nn.BatchNorm2d(residual_dim) if use_batch_norm else nn.Identity(),
+            nn.BatchNorm2d(in_dim) if use_batch_norm else nn.Identity(),
         )
         self.layers = Residual(layers, use_rezero=use_rezero, rezero_init=0.0)
 
@@ -67,7 +67,7 @@ class ConvDown(HelperModule):
         residual_bias: bool = True,
         use_batch_norm: bool = True,
         use_rezero: bool = False,
-        activation: Callable = F.silu,
+        activation: nn.Module = nn.SiLU,
     ):
         assert log2(resample_factor).is_integer(), f"Downsample factor must be a power of 2! Got '{resample_factor}'"
 
@@ -79,9 +79,9 @@ class ConvDown(HelperModule):
                 nn.Sequential(
                     nn.Conv2d(in_dim if i == 0 else out_dim, out_dim, 4, stride=2, padding=1), 
                     nn.BatchNorm2d(out_dim) if use_batch_norm else nn.Identity(), 
-                    activation
+                    activation()
                 )
-            for i in range(log2(resample_factor))])
+            for i in range(int(log2(resample_factor)))])
         elif resample_method == 'max':
             self.downsample = nn.MaxPool2d(resample_factor, stride=resample_factor)
         else:
@@ -118,7 +118,7 @@ class ConvUp(HelperModule):
         residual_bias: bool = True,
         use_batch_norm: bool = True,
         use_rezero: bool = False,
-        activation: Callable = F.silu,
+        activation: nn.Module = nn.SiLU,
     ):
         assert log2(resample_factor).is_integer(), f"Downsample factor must be a power of 2! Got '{resample_factor}'"
 
@@ -142,11 +142,11 @@ class ConvUp(HelperModule):
         if resample_method == 'conv':
             self.upsample = nn.Sequential(*[
                 nn.Sequential(
-                    nn.ConvTranspose2d(in_dim, in_dim, 4, stride=2, padding=1, output_padding=1), 
+                    nn.ConvTranspose2d(in_dim, in_dim, 4, stride=2, padding=1), 
                     nn.BatchNorm2d(in_dim) if use_batch_norm else nn.Identity(), 
-                    activation
+                    activation()
                 )
-            for _ in range(log2(resample_factor))])
+            for _ in range(int(log2(resample_factor)))])
         elif resample_method == 'interpolate':
             self.upsample = partial(F.interpolate, scale_factor=(resample_factor, resample_factor), mode='bilinear')
         else:
@@ -155,3 +155,13 @@ class ConvUp(HelperModule):
     def forward(self, x):
         x = self.residual(x)
         return self.upsample(x)
+
+if __name__ == '__main__':
+    down = ConvDown(16, 16, 32, 2)
+    up = ConvUp(16, 32, 2)
+
+    x = torch.randn(4, 16, 32, 32)
+    z = down(x)
+    y = up(z)
+
+    assert x.shape == y.shape

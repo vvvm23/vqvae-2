@@ -7,6 +7,3 @@ class HelperModule(torch.nn.Module):
 
     def build(self, *args, **kwargs):
         raise NotImplementedError
-
-def identity_activation(x: torch.Tensor):
-    return x

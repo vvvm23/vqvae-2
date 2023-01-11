@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from typing import List, Callable
+from typing import List
 
-from .utils import HelperModule, identity_activation
+from .utils import HelperModule
 from .conv import ConvDown, ConvUp
 from .vq import VQLayer
 
@@ -28,8 +28,8 @@ class VQVAE(HelperModule):
         resample_factor: int = 4,
         use_batch_norm: bool = True,
         use_rezero: bool = False,
-        activation: Callable = F.silu,
-        output_activation: Callable = identity_activation,
+        activation: nn.Module = nn.SiLU,
+        output_activation: nn.Module = nn.Identity
     ):
         # TODO: refactor arg passing a la lucidrains style
         self.encoder = ConvDown(
@@ -76,7 +76,7 @@ class VQVAE(HelperModule):
         # TODO: parameterize?
         self.out_conv = nn.Sequential(
             nn.Conv2d(hidden_dim, hidden_dim, 3, stride=1, padding=1),
-            output_activation,
+            output_activation(),
         )
 
     def encode(self, x):
