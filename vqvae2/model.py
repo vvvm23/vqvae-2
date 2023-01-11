@@ -105,16 +105,25 @@ class VQVAE2(HelperModule):
         self.vqvaes = nn.ModuleList(*vqvaes)
 
     def encode(self, x):
-        pass
+        zs, idx, total_diff = [], [], 0.0
+        z = x
+        for vqvae in self.vqvaes:
+            z, id, diff = vqvae.encode(z)
+            zs.append(z)
+            idx.append(id)
+            total_diff += diff
 
-    def decode(self, x):
+        return zs, idx, diff
+
+    def decode(self, zs):
         pass
 
     def decode_discrete(self, x):
         pass
 
-    def forward(self):
-        pass
+    def forward(self, x):
+        zs, idx, diff = self.encode(x)
+        return self.decode(zs), idx, diff
 
 if __name__ == '__main__':
     vqvae = VQVAE(3, 256, 256, 256, residual_dim=256)
