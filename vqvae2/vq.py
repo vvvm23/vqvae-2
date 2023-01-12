@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from einops import rearrange
+import accelerate
 
 from .utils import HelperModule
 
@@ -44,8 +45,8 @@ class VQLayer(HelperModule):
 
         if self.training:
             # TODO: can this be replaced with counter on idx? can avoid building one hot matrix maybe?
-            embedding_onehot_sum = embedding_onehot.sum(dim=0) 
-            embedding_sum = z.T @ embedding_onehot
+            embedding_onehot_sum = accelerate.utils.reduce(embedding_onehot.sum(dim=0))
+            embedding_sum = accelerate.utils.reduce(z.T @ embedding_onehot)
 
             self.cluster_sizes.data.mul_(self.decay).add_(
                 embedding_onehot_sum, alpha=1-self.decay

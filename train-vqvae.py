@@ -1,13 +1,16 @@
+import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
 from vqvae2 import VQVAE
 from data import get_dataset
 
-from ptpt.trainer import TrainerConfig, Trainer
+from accelerate import Accelerator
+accelerator = Accelerator()
 
 def main(args):
-    batch_size = 16
+    steps = 300_000
+    batch_size = 128
     lr = 1e-4
     beta = 0.25
     nb_workers = 4
@@ -25,28 +28,19 @@ def main(args):
         codebook_size=512,
         residual_dim=256
     )
+    optim = torch.optim.AdamW(net.parameters(), lr=lr)
+    train_loader, test_loader = get_dataset('cifar10', batch_size, nb_workers)
 
-    _, (train_dataset, test_dataset) = get_dataset('cifar10', batch_size, nb_workers, return_dataset=True)
+    net, optim, train_loader = accelerator.prepare(net, optim, train_loader)
 
-    cfg = TrainerConfig(
-        exp_name = 'vqvae-dev',
-        batch_size=batch_size,
-        learning_rate=lr,
-        nb_workers=nb_workers,
-        save_outputs=False,
-        metric_names=['mse_loss', 'kl_loss'],
-        use_amp=False,
-    )
+    for batch in train_loader:
+        optim.zero_grad()
+        loss, mse_loss, kl_loss = loss_fn(net, batch)
+        accelerator.backward(loss)
+        optim.step()
 
-    trainer = Trainer(
-        net=net,
-        loss_fn=loss_fn,
-        train_dataset=train_dataset,
-        test_dataset=test_dataset,
-        cfg=cfg
-    )
+        accelerator.print(loss, mse_loss, kl_loss)
 
-    trainer.train()
 
 if __name__ == '__main__':
     main(None)
