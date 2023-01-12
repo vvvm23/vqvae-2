@@ -130,15 +130,4 @@ dmypy.json
 
 # ADDITIONS START FROM HERE
 data/
-samples/
-misc/
-runs/
-latent-data/
-*.png
-*.jpg
-*.pt
-
-!recon-example.png
-
-!ffhq1024-state-dict-0017.pt
-!ffhq1024-large-state-dict-0010.pt
+exp/
