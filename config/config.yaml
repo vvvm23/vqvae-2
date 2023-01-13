@@ -1,0 +1,4 @@
+defaults:
+  - hydra: default
+  - vqvae: cifar10
+  - data: cifar10
