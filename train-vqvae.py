@@ -1,6 +1,7 @@
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
+import logging
 from accelerate.logging import get_logger
 from accelerate import Accelerator
 from accelerate.utils import set_seed
@@ -12,6 +13,7 @@ accelerator = Accelerator()
 
 import torch
 import torch.nn.functional as F
+from torchvision.utils import save_image
 
 from tqdm import tqdm
 from pathlib import Path
@@ -41,9 +43,15 @@ def main(cfg: DictConfig):
     logger.info("Loaded Hydra config:")
     logger.info(OmegaConf.to_yaml(cfg))
 
-    batch_size = cfg.vqvae.training.batch_size // accelerator.num_processes
+    cfg.vqvae.training.batch_size //= accelerator.num_processes
 
-    checkpoint_dir = setup_directory()
+    exp_dir = setup_directory()
+    checkpoint_dir = exp_dir / 'checkpoints'
+    recon_dir = exp_dir / 'recon'
+
+    checkpoint_dir.mkdir(exist_ok=True)
+    recon_dir.mkdir(exist_ok=True)
+
     accelerator.wait_for_everyone()
 
     def loss_fn(net, batch, eval=False):
@@ -52,7 +60,7 @@ def main(cfg: DictConfig):
         if eval:
             x, recon = accelerator.gather_for_metrics((x, recon))
         mse_loss = F.mse_loss(recon, x)
-        return mse_loss + diff*cfg.vqvae.training.beta, mse_loss, diff
+        return mse_loss + diff*cfg.vqvae.training.beta, mse_loss, diff, recon
 
     net = VQVAE(**cfg.vqvae.model)
     optim = torch.optim.AdamW(net.parameters(), lr=cfg.vqvae.training.lr)
@@ -70,7 +78,7 @@ def main(cfg: DictConfig):
         total_loss, total_mse_loss, total_kl_loss = 0.0, 0.0, 0.0
         for batch in it:
             optim.zero_grad()
-            loss, mse_loss, kl_loss = loss_fn(net, batch)
+            loss, mse_loss, kl_loss, _ = loss_fn(net, batch)
             accelerator.backward(loss)
             optim.step()
 
@@ -88,19 +96,26 @@ def main(cfg: DictConfig):
                 save_model(net, checkpoint_dir / f'state_dict_{steps:06}.pt')
 
         if steps <= max_steps:
-            accelerator.print(f"[training {steps}/{max_steps}] loss: {total_loss/len(train_loader)}, mse_loss: {total_mse_loss/len(train_loader)}, kl_loss: {total_kl_loss/len(train_loader)}")
+            logging.info(f"[training {steps}/{max_steps}] loss: {total_loss/len(train_loader)}, mse_loss: {total_mse_loss/len(train_loader)}, kl_loss: {total_kl_loss/len(train_loader)}")
 
         total_loss, total_mse_loss, total_kl_loss = 0.0, 0.0, 0.0
         with torch.no_grad():
             for batch in test_loader:
-                loss, mse_loss, kl_loss = loss_fn(net, batch)
+                loss, mse_loss, kl_loss, recon = loss_fn(net, batch)
 
                 total_loss += loss
                 total_mse_loss += mse_loss
                 total_kl_loss += kl_loss
-        
-        accelerator.print(f"[evaluation {steps}/{max_steps}] (eval) loss: {total_loss/len(test_loader)}, mse_loss: {total_mse_loss/len(test_loader)}, kl_loss: {total_kl_loss/len(test_loader)}")
 
+            if accelerator.is_local_main_process:
+                save_image(
+                    torch.concat([batch[0], recon], axis=0),
+                    recon_dir / f'recon_{steps:06}.png', 
+                    nrow=len(recon), normalize=True
+                )
+            accelerator.wait_for_everyone()
+        
+        logging.info(f"[evaluation {steps}/{max_steps}] (eval) loss: {total_loss/len(test_loader)}, mse_loss: {total_mse_loss/len(test_loader)}, kl_loss: {total_kl_loss/len(test_loader)}")
 
 
 if __name__ == '__main__':

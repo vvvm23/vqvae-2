@@ -1,3 +1,4 @@
+.DS_Store
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -131,3 +132,4 @@ dmypy.json
 # ADDITIONS START FROM HERE
 data/
 exp/
+
