@@ -1,62 +1,50 @@
 import torch
 import torchvision
+import torchvision.transforms as T
 
-# TODO: refactor this file
-def get_dataset(task: str, batch_size: int, workers: int, shuffle_train=True, shuffle_test=False, return_dataset=False):
-    if task in ['ffhq1024','ffhq1024-large']:
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
-        train_idx, test_idx = torch.arange(0, 60_000), torch.arange(60_000, len(dataset))
-        train_dataset, test_dataset = torch.utils.data.Subset(dataset, train_idx), torch.utils.data.Subset(dataset, test_idx)
-    elif task == 'ffhq256':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.Resize(256),
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        dataset = torchvision.datasets.ImageFolder('data/ffhq1024', transform=transforms)
-        train_idx, test_idx = torch.arange(0, 60_000), torch.arange(60_000, len(dataset))
-        train_dataset, test_dataset = torch.utils.data.Subset(dataset, train_idx), torch.utils.data.Subset(dataset, test_idx)
-    elif task == 'ffhq128':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        dataset = torchvision.datasets.ImageFolder('data/ffhq128', transform=transforms)
-        train_idx, test_idx = torch.arange(0, 60_000), torch.arange(60_000, len(dataset))
-        train_dataset, test_dataset = torch.utils.data.Subset(dataset, train_idx), torch.utils.data.Subset(dataset, test_idx)
-    elif task == 'cifar10':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-        train_dataset = torchvision.datasets.CIFAR10('data', train=True, transform=transforms, download=True)
-        test_dataset = torchvision.datasets.CIFAR10('data', train=False, transform=transforms, download=True)
-    elif task == 'mnist':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-        ])
-        train_dataset = torchvision.datasets.MNIST('data', train=True, transform=transforms, download=True)
-        test_dataset = torchvision.datasets.MNIST('data', train=False, transform=transforms, download=True)
-    elif task == 'kmnist':
-        transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-        ])
-        train_dataset = torchvision.datasets.KMNIST('data', train=True, transform=transforms, download=True)
-        test_dataset = torchvision.datasets.KMNIST('data', train=False, transform=transforms, download=True)
+import logging
+from accelerate.logging import get_logger
+logger = get_logger(__file__)
+
+def build_transforms(cfg):
+    train_transforms = [
+        T.Resize((cfg.data.height, cfg.data.width)),
+        T.ToTensor()
+    ]
+    test_transforms = [
+        T.Resize((cfg.data.height, cfg.data.width)),
+        T.ToTensor()
+    ]
+
+    if cfg.data.preprocess.vflip: 
+        train_transforms.append(T.RandomVerticalFlip())
+    if cfg.data.preprocess.normalise: 
+        assert len(cfg.data.preprocess.normalise.mean) == cfg.data.channels
+        assert len(cfg.data.preprocess.normalise.std) == cfg.data.channels
+        train_transforms.append(T.Normalize(**cfg.data.preprocess.normalise))
+        test_transforms.append(T.Normalize(**cfg.data.preprocess.normalise))
+
+    train_transforms, test_transforms = T.Compose(train_transforms), T.Compose(test_transforms)
+
+    return train_transforms, test_transforms
+
+
+def get_dataset(cfg):
+    train_transforms, test_transforms = build_transforms(cfg)
+    if cfg.data.name == 'cifar10':
+        train_dataset = torchvision.datasets.CIFAR10('data', train=True, transform=train_transforms, download=True)
+        test_dataset = torchvision.datasets.CIFAR10('data', train=False, transform=test_transforms, download=True)
     else:
-        print("> Unknown dataset. Terminating")
+        logging.error(f"Unknown dataset {cfg.data.name}. Terminating")
         exit()
 
-    print(f"> Train dataset size: {len(train_dataset)}")
-    print(f"> Test dataset size: {len(test_dataset)}")
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=workers, shuffle=shuffle_train)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, num_workers=workers, shuffle=shuffle_test)
-    
-    if return_dataset:
-        return (train_loader, test_loader), (train_dataset, test_dataset)
+    logging.info(f"Train dataset size: {len(train_dataset)}")
+    logging.info(f"Test dataset size: {len(test_dataset)}")
 
+    batch_size = cfg.vqvae.training.batch_size
+    workers = cfg.data.num_workers
+
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=workers, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, num_workers=workers, shuffle=False)
+    
     return train_loader, test_loader

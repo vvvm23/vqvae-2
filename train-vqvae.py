@@ -1,12 +1,17 @@
+import hydra
+from omegaconf import DictConfig, OmegaConf
+
+from accelerate.logging import get_logger
 from accelerate import Accelerator
 from accelerate.utils import set_seed
+
+logger = get_logger(__file__)
 
 set_seed(0xAAAA)
 accelerator = Accelerator()
 
 import torch
 import torch.nn.functional as F
-from torchvision.utils import save_image
 
 from tqdm import tqdm
 from pathlib import Path
@@ -29,19 +34,17 @@ def setup_directory(base='exp'):
 
     exp_dir = (root_dir / save_id)
     exp_dir.mkdir(exist_ok=True)
-
     return exp_dir
 
-def main(args):
-    batch_size = 128 // accelerator.num_processes
-    lr = 1e-4
-    beta = 0.25
-    nb_workers = 4
+@hydra.main(version_base=None, config_path='config', config_name="config")
+def main(cfg: DictConfig):
+    logger.info("Loaded Hydra config:")
+    logger.info(OmegaConf.to_yaml(cfg))
 
-    max_steps = 300_000
-    save_frequency = 10_000
+    batch_size = cfg.vqvae.training.batch_size // accelerator.num_processes
 
-    root_dir = setup_directory()
+    checkpoint_dir = setup_directory()
+    accelerator.wait_for_everyone()
 
     def loss_fn(net, batch, eval=False):
         x, *_ = batch
@@ -49,21 +52,16 @@ def main(args):
         if eval:
             x, recon = accelerator.gather_for_metrics((x, recon))
         mse_loss = F.mse_loss(recon, x)
-        return mse_loss + diff*beta, mse_loss, diff
+        return mse_loss + diff*cfg.vqvae.training.beta, mse_loss, diff
 
-    net = VQVAE(
-        in_dim=3, 
-        hidden_dim=128, 
-        codebook_dim=64,
-        codebook_size=1024,
-        residual_dim=256
-    )
-    optim = torch.optim.AdamW(net.parameters(), lr=lr)
-    train_loader, test_loader = get_dataset('cifar10', batch_size, nb_workers)
+    net = VQVAE(**cfg.vqvae.model)
+    optim = torch.optim.AdamW(net.parameters(), lr=cfg.vqvae.training.lr)
+    train_loader, test_loader = get_dataset(cfg)
 
     net, optim, train_loader, test_loader = accelerator.prepare(net, optim, train_loader, test_loader)
 
     steps = 0
+    max_steps = cfg.vqvae.training.max_steps
     while steps <= max_steps:
         it = train_loader
         if accelerator.is_local_main_process:
@@ -81,13 +79,13 @@ def main(args):
             total_kl_loss += kl_loss
 
             if steps > max_steps:
-                save_model(net, root_dir / f'state_dict_final.pt')
+                save_model(net, checkpoint_dir / f'state_dict_final.pt')
                 break
 
             steps += 1
 
-            if steps % save_frequency == 0:
-                save_model(net, root_dir / f'state_dict_{steps:06}.pt')
+            if steps % cfg.vqvae.training.save_frequency == 0:
+                save_model(net, checkpoint_dir / f'state_dict_{steps:06}.pt')
 
         if steps <= max_steps:
             accelerator.print(f"[training {steps}/{max_steps}] loss: {total_loss/len(train_loader)}, mse_loss: {total_mse_loss/len(train_loader)}, kl_loss: {total_kl_loss/len(train_loader)}")
