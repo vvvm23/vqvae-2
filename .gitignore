@@ -132,4 +132,5 @@ dmypy.json
 # ADDITIONS START FROM HERE
 data/
 exp/
+!config/data
 

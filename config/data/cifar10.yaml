@@ -1,0 +1,11 @@
+name: cifar10
+height: 32
+width: 32
+channels: 3
+num_workers: 4
+
+preprocess:
+  vflip: true
+  normalise: 
+    mean: [0.4914, 0.4822, 0.4465]
+    std: [0.247, 0.243, 0.261]
