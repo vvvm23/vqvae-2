@@ -1,4 +1,4 @@
 defaults:
   - hydra: default
-  - vqvae: cifar10
-  - data: cifar10
+  - vqvae: mnist
+  - data: mnist

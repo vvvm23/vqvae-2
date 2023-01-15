@@ -7,6 +7,11 @@ import accelerate
 
 from .utils import HelperModule
 
+import logging
+from accelerate.logging import get_logger
+
+logger = get_logger(__file__)
+
 class VQLayer(HelperModule):
     def build(self,
         in_dim: int,
@@ -16,13 +21,14 @@ class VQLayer(HelperModule):
         eps: float = 1e-5,
         embedding_dtype: torch.dtype = torch.float32
     ):
+        self.embedding_dim = embedding_dim
         self.codebook_size = codebook_size
         self.decay = decay
         self.eps = eps
         self.conv_in = nn.Conv2d(in_dim, embedding_dim, 1) 
 
         # TODO: smarter init?
-        embeddings = torch.randn(embedding_dim, codebook_size, dtype=embedding_dtype)
+        embeddings = torch.normal(mean=0.0, std=1.0, size=(embedding_dim, codebook_size)).to(embedding_dtype)
         self.register_buffer('embeddings', embeddings)
         self.register_buffer('cluster_sizes', torch.zeros(codebook_size, dtype=torch.float32)) 
         self.register_buffer('embeddings_avg', embeddings.clone())
@@ -31,6 +37,7 @@ class VQLayer(HelperModule):
     def forward(self, x):
         x = rearrange(self.conv_in(x), 'N c h w -> N h w c')
         z = rearrange(x, 'N h w c -> (N h w) c')
+        # z = x.reshape(-1, self.embedding_dim)
         cluster_distances = (
             z.pow(2).sum(dim=-1, keepdim=True)
             - 2 * z @ self.embeddings
@@ -40,13 +47,17 @@ class VQLayer(HelperModule):
 
         embedding_onehot = F.one_hot(embedding_idx, self.codebook_size).to(z.dtype) # TODO: is onehot needed in eval mode?
         
-        embedding_idx = rearrange(embedding_idx, '(N h w) -> N h w', N=x.shape[0], h=x.shape[1], w=x.shape[2])
+        embedding_idx = embedding_idx.reshape(*x.shape[:-1])
         q = F.embedding(embedding_idx, self.embeddings.T)
 
         if self.training:
+            # TODO: adding the all reduce breaks things.. unsure why
+            # embedding_onehot_sum = accelerate.utils.reduce(embedding_onehot.sum(dim=0), reduction='sum')
+            # embedding_sum = accelerate.utils.reduce(z.T @ embedding_onehot, reduction='sum')
+
             # TODO: can this be replaced with counter on idx? can avoid building one hot matrix maybe?
-            embedding_onehot_sum = accelerate.utils.reduce(embedding_onehot.sum(dim=0))
-            embedding_sum = accelerate.utils.reduce(z.T @ embedding_onehot)
+            embedding_onehot_sum = embedding_onehot.sum(dim=0)
+            embedding_sum = z.T @ embedding_onehot
 
             self.cluster_sizes.data.mul_(self.decay).add_(
                 embedding_onehot_sum, alpha=1-self.decay

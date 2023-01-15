@@ -8,7 +8,7 @@ from accelerate.utils import set_seed
 
 logger = get_logger(__file__)
 
-set_seed(0xAAAA)
+# set_seed(0xAAAA)
 accelerator = Accelerator()
 
 import torch
@@ -60,14 +60,15 @@ def main(cfg: DictConfig):
         if eval:
             x, recon = accelerator.gather_for_metrics((x, recon))
         mse_loss = F.mse_loss(recon, x)
-        return mse_loss + diff*cfg.vqvae.training.beta, mse_loss, diff, recon
+        return mse_loss + diff * cfg.vqvae.training.beta, mse_loss, diff, recon
 
-    net = VQVAE(**cfg.vqvae.model)
+    net = VQVAE(**cfg.vqvae.model, activation=torch.nn.ReLU)
     optim = torch.optim.AdamW(net.parameters(), lr=cfg.vqvae.training.lr)
     train_loader, test_loader = get_dataset(cfg)
 
     net, optim, train_loader, test_loader = accelerator.prepare(net, optim, train_loader, test_loader)
 
+    # TODO: add wandb logging, would be nice to have a codebook index tracker!
     steps = 0
     max_steps = cfg.vqvae.training.max_steps
     while steps <= max_steps:
@@ -76,6 +77,7 @@ def main(cfg: DictConfig):
             it = tqdm(train_loader)
 
         total_loss, total_mse_loss, total_kl_loss = 0.0, 0.0, 0.0
+        net.train()
         for batch in it:
             optim.zero_grad()
             loss, mse_loss, kl_loss, _ = loss_fn(net, batch)
@@ -95,10 +97,12 @@ def main(cfg: DictConfig):
             if steps % cfg.vqvae.training.save_frequency == 0:
                 save_model(net, checkpoint_dir / f'state_dict_{steps:06}.pt')
 
+
         if steps <= max_steps:
             logging.info(f"[training {steps}/{max_steps}] loss: {total_loss/len(train_loader)}, mse_loss: {total_mse_loss/len(train_loader)}, kl_loss: {total_kl_loss/len(train_loader)}")
 
         total_loss, total_mse_loss, total_kl_loss = 0.0, 0.0, 0.0
+        net.eval()
         with torch.no_grad():
             for batch in test_loader:
                 loss, mse_loss, kl_loss, recon = loss_fn(net, batch)
