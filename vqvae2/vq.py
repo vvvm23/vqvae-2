@@ -28,7 +28,7 @@ class VQLayer(HelperModule):
         self.conv_in = nn.Conv2d(in_dim, embedding_dim, 1) 
 
         # TODO: smarter init?
-        embeddings = torch.normal(mean=0.0, std=1.0, size=(embedding_dim, codebook_size)).to(embedding_dtype)
+        embeddings = torch.normal(mean=0.0, std=0.1, size=(embedding_dim, codebook_size)).to(embedding_dtype)
         self.register_buffer('embeddings', embeddings)
         self.register_buffer('cluster_sizes', torch.zeros(codebook_size, dtype=torch.float32)) 
         self.register_buffer('embeddings_avg', embeddings.clone())
@@ -37,7 +37,6 @@ class VQLayer(HelperModule):
     def forward(self, x):
         x = rearrange(self.conv_in(x), 'N c h w -> N h w c')
         z = rearrange(x, 'N h w c -> (N h w) c')
-        # z = x.reshape(-1, self.embedding_dim)
         cluster_distances = (
             z.pow(2).sum(dim=-1, keepdim=True)
             - 2 * z @ self.embeddings

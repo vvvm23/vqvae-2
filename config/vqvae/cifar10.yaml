@@ -1,8 +1,8 @@
 model:
   in_dim: 3
   hidden_dim: 128
-  codebook_dim: 128
-  codebook_size: 256
+  codebook_dim: 64
+  codebook_size: 128
   num_residual_layers: 2
   residual_dim: 256
   resample_factor: 4
