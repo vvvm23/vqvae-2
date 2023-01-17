@@ -23,6 +23,7 @@ from vqvae2 import VQVAE
 from data import get_dataset
 from utils import init_wandb
 
+import wandb as wandb_module
 
 def save_model(net, path):
     accelerator.wait_for_everyone()
@@ -72,6 +73,7 @@ def main(cfg: DictConfig):
     train_loader, test_loader = get_dataset(cfg)
 
     net, optim, train_loader, test_loader = accelerator.prepare(net, optim, train_loader, test_loader)
+    codebook_history = []
 
     steps = 0
     max_steps = cfg.vqvae.training.max_steps
@@ -93,7 +95,7 @@ def main(cfg: DictConfig):
             total_mse_loss += mse_loss
             total_kl_loss += kl_loss
 
-            idx_total += torch.bincount(idx.long().flatten(), minlength=cfg.vqvae.model.codebook_size).cpu()
+            idx_total += torch.bincount(idx.long().flatten(), minlength=cfg.vqvae.model.codebook_size).detach().cpu()
 
             if steps > max_steps:
                 save_model(net, checkpoint_dir / f'state_dict_final.pt')
@@ -115,8 +117,7 @@ def main(cfg: DictConfig):
                         'kl_loss': total_kl_loss/len(train_loader),
                     }
                 }, commit=False)
-            logging.info("Codebook usage summary:")
-            logging.info(idx_total / len(train_loader))
+                codebook_history.append(idx_total)
 
         total_loss, total_mse_loss, total_kl_loss = 0.0, 0.0, 0.0
         net.eval()
@@ -124,6 +125,7 @@ def main(cfg: DictConfig):
             for batch in test_loader:
                 loss, mse_loss, kl_loss, recon, idx = loss_fn(net, batch)
 
+                # TODO: refactor metrics with helper class
                 total_loss += loss
                 total_mse_loss += mse_loss
                 total_kl_loss += kl_loss
@@ -145,6 +147,15 @@ def main(cfg: DictConfig):
                     'kl_loss': total_kl_loss/len(train_loader),
                 }
             }, commit=True)
+    if accelerator.is_main_process:
+        wandb.log({'codebook_usage': wandb_module.plot.line_series(
+            xs=list(range(len(codebook_history))),
+            ys=torch.stack(codebook_history),
+            keys=[str(i) for i in range(cfg.vqvae.model.codebook_size)],
+            title="Codebook Usage",
+            xname="Epochs"
+        )})
+
 
 
 if __name__ == '__main__':
