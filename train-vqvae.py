@@ -8,7 +8,7 @@ from accelerate.utils import set_seed
 
 logger = get_logger(__file__)
 
-# set_seed(0xAAAA)
+set_seed(0xAAAA)
 accelerator = Accelerator()
 
 import torch
@@ -21,6 +21,8 @@ from datetime import datetime
 
 from vqvae2 import VQVAE
 from data import get_dataset
+from utils import init_wandb
+
 
 def save_model(net, path):
     accelerator.wait_for_everyone()
@@ -52,6 +54,9 @@ def main(cfg: DictConfig):
     checkpoint_dir.mkdir(exist_ok=True)
     recon_dir.mkdir(exist_ok=True)
 
+    if accelerator.is_main_process:
+        wandb = init_wandb(cfg.wandb.entity, exp_dir, cfg.wandb.project)
+
     accelerator.wait_for_everyone()
 
     def loss_fn(net, batch, eval=False):
@@ -68,7 +73,6 @@ def main(cfg: DictConfig):
 
     net, optim, train_loader, test_loader = accelerator.prepare(net, optim, train_loader, test_loader)
 
-    # TODO: add wandb logging, would be nice to have a codebook index tracker!
     steps = 0
     max_steps = cfg.vqvae.training.max_steps
     while steps <= max_steps:
@@ -103,6 +107,14 @@ def main(cfg: DictConfig):
 
         if steps <= max_steps:
             logging.info(f"[training {steps}/{max_steps}] loss: {total_loss/len(train_loader)}, mse_loss: {total_mse_loss/len(train_loader)}, kl_loss: {total_kl_loss/len(train_loader)}")
+            if accelerator.is_main_process:
+                wandb.log({
+                    'train': {
+                        'loss': total_loss/len(train_loader),
+                        'mse_loss': total_mse_loss/len(train_loader),
+                        'kl_loss': total_kl_loss/len(train_loader),
+                    }
+                }, commit=False)
             logging.info("Codebook usage summary:")
             logging.info(idx_total / len(train_loader))
 
@@ -125,6 +137,14 @@ def main(cfg: DictConfig):
             accelerator.wait_for_everyone()
         
         logging.info(f"[evaluation {steps}/{max_steps}] (eval) loss: {total_loss/len(test_loader)}, mse_loss: {total_mse_loss/len(test_loader)}, kl_loss: {total_kl_loss/len(test_loader)}")
+        if accelerator.is_main_process:
+            wandb.log({
+                'eval': {
+                    'loss': total_loss/len(train_loader),
+                    'mse_loss': total_mse_loss/len(train_loader),
+                    'kl_loss': total_kl_loss/len(train_loader),
+                }
+            }, commit=True)
 
 
 if __name__ == '__main__':
