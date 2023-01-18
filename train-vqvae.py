@@ -106,9 +106,11 @@ def main(cfg: DictConfig):
         metrics = MetricGroup('loss', 'mse_loss', 'kl_loss')
         net.eval()
         with torch.no_grad():
+            total_idx = torch.zeros(cfg.vqvae.model.codebook_size).cpu().long()
             for batch in test_loader:
-                loss, *m, recon, _ = loss_fn(net, batch)
+                loss, *m, recon, idx = loss_fn(net, batch)
                 metrics.log(loss, *m)
+                total_idx += torch.bincount(idx.cpu().flatten(), minlength=cfg.vqvae.model.codebook_size)
 
             if accelerator.is_local_main_process:
                 save_image(
@@ -120,7 +122,10 @@ def main(cfg: DictConfig):
         
         metrics.print_summary(f"evaluation {steps}/{max_steps}")
         if accelerator.is_main_process:
-            wandb.log({'eval': metrics.summarise()}, commit=True)
+            wandb.log({'eval': metrics.summarise()}, commit=False)
+            wandb.log({'eval': {'unused_codewords_proportion': 
+                (total_idx == 0).sum() / cfg.vqvae.model.codebook_size
+            }}, commit=True)
 
     if accelerator.is_main_process:
         wandb.log({'codebook_usage':
