@@ -112,20 +112,23 @@ def main(cfg: DictConfig):
                 metrics.log(loss, *m)
                 total_idx += torch.bincount(idx.cpu().flatten(), minlength=cfg.vqvae.model.codebook_size)
 
-            if accelerator.is_local_main_process:
-                save_image(
-                    torch.concat([batch[0], recon], axis=0),
-                    recon_dir / f'recon_{steps:06}.png', 
-                    nrow=len(recon), normalize=True
-                )
-            accelerator.wait_for_everyone()
-        
         metrics.print_summary(f"evaluation {steps}/{max_steps}")
+
         if accelerator.is_main_process:
+            save_image(
+                torch.concat([batch[0], recon], axis=0),
+                recon_dir / f'recon_{steps:06}.png', 
+                nrow=len(recon), normalize=True
+            )
+            wandb.log({
+                'input': wandb_module.Image(batch[0], caption="Input Image"),
+                'recon': wandb_module.Image(recon, caption="Reconstruction")},
+            commit=False)
             wandb.log({'eval': metrics.summarise()}, commit=False)
             wandb.log({'eval': {'unused_codewords_proportion': 
                 (total_idx == 0).sum() / cfg.vqvae.model.codebook_size
             }}, commit=True)
+        accelerator.wait_for_everyone()
 
     if accelerator.is_main_process:
         wandb.log({'codebook_usage':
