@@ -21,6 +21,8 @@ from vqvae2 import VQVAE
 from data import get_dataset
 from utils import init_wandb, MetricGroup, setup_directory
 
+import wandb as wandb_module
+
 def save_model(net, path):
     accelerator.wait_for_everyone()
     if accelerator.is_main_process:
@@ -59,6 +61,7 @@ def main(cfg: DictConfig):
     train_loader, test_loader = get_dataset(cfg)
 
     net, optim, train_loader, test_loader = accelerator.prepare(net, optim, train_loader, test_loader)
+    idx_history = []
 
     steps = 0
     max_steps = cfg.vqvae.training.max_steps
@@ -68,12 +71,15 @@ def main(cfg: DictConfig):
             it = tqdm(train_loader)
 
         metrics = MetricGroup('loss', 'mse_loss', 'kl_loss')
+        total_idx = torch.zeros(cfg.vqvae.model.codebook_size).cpu().long()
         net.train()
         for batch in it:
             optim.zero_grad()
-            loss, *m, _, _ = loss_fn(net, batch)
+            loss, *m, _, idx = loss_fn(net, batch)
             accelerator.backward(loss)
             optim.step()
+
+            total_idx += torch.bincount(idx.cpu().detach().flatten(), minlength=cfg.vqvae.model.codebook_size)
 
             metrics.log(loss, *m)
 
@@ -87,10 +93,15 @@ def main(cfg: DictConfig):
                 save_model(net, checkpoint_dir / f'state_dict_{steps:06}.pt')
 
 
+
         if steps <= max_steps:
             metrics.print_summary(f"training {steps}/{max_steps}")
             if accelerator.is_main_process:
                 wandb.log({'train': metrics.summarise()}, commit=False)
+                wandb.log({'train': {'unused_codewords_proportion': 
+                    (total_idx == 0).sum() / cfg.vqvae.model.codebook_size
+                }}, commit=False)
+                idx_history.append(total_idx / (idx.numel() * len(train_loader)))
 
         metrics = MetricGroup('loss', 'mse_loss', 'kl_loss')
         net.eval()
@@ -110,6 +121,16 @@ def main(cfg: DictConfig):
         metrics.print_summary(f"evaluation {steps}/{max_steps}")
         if accelerator.is_main_process:
             wandb.log({'eval': metrics.summarise()}, commit=True)
+
+    if accelerator.is_main_process:
+        wandb.log({'codebook_usage':
+            wandb_module.plot.line_series(
+                xs=list(range(len(idx_history))),
+                ys=torch.stack(idx_history, dim=-1).numpy(),
+                keys=[f'codeword_{i:04}' for i in range(cfg.vqvae.model.codebook_size)],
+                xname="Epochs"
+            )
+        })
 
 
 if __name__ == '__main__':
