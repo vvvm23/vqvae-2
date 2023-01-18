@@ -16,28 +16,17 @@ import torch.nn.functional as F
 from torchvision.utils import save_image
 
 from tqdm import tqdm
-from pathlib import Path
 from datetime import datetime 
 
 from vqvae2 import VQVAE
 from data import get_dataset
-from utils import init_wandb
+from utils import init_wandb, MetricGroup, setup_directory
 
 def save_model(net, path):
     accelerator.wait_for_everyone()
     if accelerator.is_main_process:
         net = accelerator.unwrap_model(net)
         accelerator.save(net.state_dict(), path)
-
-def setup_directory(base='exp'):
-    root_dir = Path(base)
-    root_dir.mkdir(exist_ok=True)
-
-    save_id = 'vqvae_' + str(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-
-    exp_dir = (root_dir / save_id)
-    exp_dir.mkdir(exist_ok=True)
-    return exp_dir
 
 @hydra.main(version_base=None, config_path='config', config_name="config")
 def main(cfg: DictConfig):
@@ -54,14 +43,13 @@ def main(cfg: DictConfig):
     recon_dir.mkdir(exist_ok=True)
 
     if accelerator.is_main_process:
-        wandb = init_wandb(cfg.wandb.entity, exp_dir, cfg.wandb.project)
-
+        wandb = init_wandb(cfg, exp_dir)
     accelerator.wait_for_everyone()
 
     def loss_fn(net, batch, eval=False):
         x, *_ = batch
         recon, idx, diff = net(x)
-        if eval: # TODO: don't overload inbuilt function
+        if eval:
             x, recon = accelerator.gather_for_metrics((x, recon))
         mse_loss = F.mse_loss(recon, x)
         return mse_loss + diff * cfg.vqvae.training.beta, mse_loss, diff, recon, idx
@@ -79,17 +67,15 @@ def main(cfg: DictConfig):
         if accelerator.is_local_main_process:
             it = tqdm(train_loader)
 
-        total_loss, total_mse_loss, total_kl_loss = 0.0, 0.0, 0.0
+        metrics = MetricGroup('loss', 'mse_loss', 'kl_loss')
         net.train()
         for batch in it:
             optim.zero_grad()
-            loss, mse_loss, kl_loss, _, idx = loss_fn(net, batch)
+            loss, *m, _, _ = loss_fn(net, batch)
             accelerator.backward(loss)
             optim.step()
 
-            total_loss += loss
-            total_mse_loss += mse_loss
-            total_kl_loss += kl_loss
+            metrics.log(loss)
 
             if steps > max_steps:
                 save_model(net, checkpoint_dir / f'state_dict_final.pt')
@@ -102,27 +88,16 @@ def main(cfg: DictConfig):
 
 
         if steps <= max_steps:
-            logging.info(f"[training {steps}/{max_steps}] loss: {total_loss/len(train_loader)}, mse_loss: {total_mse_loss/len(train_loader)}, kl_loss: {total_kl_loss/len(train_loader)}")
+            metrics.print_summary(f"training {steps}/{max_steps}")
             if accelerator.is_main_process:
-                wandb.log({
-                    'train': {
-                        'loss': total_loss/len(train_loader),
-                        'mse_loss': total_mse_loss/len(train_loader),
-                        'kl_loss': total_kl_loss/len(train_loader),
-                    }
-                }, commit=False)
-                codebook_history.append(idx_total)
+                wandb.log({'train': metrics.summarise()}, commit=False)
 
-        total_loss, total_mse_loss, total_kl_loss = 0.0, 0.0, 0.0
+        metrics = MetricGroup('loss', 'mse_loss', 'kl_loss')
         net.eval()
         with torch.no_grad():
             for batch in test_loader:
-                loss, mse_loss, kl_loss, recon, idx = loss_fn(net, batch)
-
-                # TODO: refactor metrics with helper class
-                total_loss += loss
-                total_mse_loss += mse_loss
-                total_kl_loss += kl_loss
+                loss, *m, recon, _ = loss_fn(net, batch)
+                metrics.log(loss, *m)
 
             if accelerator.is_local_main_process:
                 save_image(
@@ -132,15 +107,9 @@ def main(cfg: DictConfig):
                 )
             accelerator.wait_for_everyone()
         
-        logging.info(f"[evaluation {steps}/{max_steps}] (eval) loss: {total_loss/len(test_loader)}, mse_loss: {total_mse_loss/len(test_loader)}, kl_loss: {total_kl_loss/len(test_loader)}")
+        metrics.print_summary(f"evaluation {steps}/{max_steps}")
         if accelerator.is_main_process:
-            wandb.log({
-                'eval': {
-                    'loss': total_loss/len(train_loader),
-                    'mse_loss': total_mse_loss/len(train_loader),
-                    'kl_loss': total_kl_loss/len(train_loader),
-                }
-            }, commit=True)
+            wandb.log({'eval': metrics.summarise()}, commit=True)
 
 
 if __name__ == '__main__':

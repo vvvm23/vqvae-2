@@ -2,4 +2,4 @@ defaults:
   - hydra: default
   - vqvae: mnist
   - data: mnist
-  - wandb: default
+  - wandb: null
