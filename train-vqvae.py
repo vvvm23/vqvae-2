@@ -16,7 +16,6 @@ import torch.nn.functional as F
 from torchvision.utils import save_image
 
 from tqdm import tqdm
-from datetime import datetime 
 
 from vqvae2 import VQVAE
 from data import get_dataset
@@ -76,7 +75,7 @@ def main(cfg: DictConfig):
             accelerator.backward(loss)
             optim.step()
 
-            metrics.log(loss)
+            metrics.log(loss, *m)
 
             if steps > max_steps:
                 save_model(net, checkpoint_dir / f'state_dict_final.pt')
