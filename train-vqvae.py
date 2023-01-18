@@ -33,6 +33,7 @@ def main(cfg: DictConfig):
     logger.info("Loaded Hydra config:")
     logger.info(OmegaConf.to_yaml(cfg))
 
+    assert cfg.vqvae.training.batch_size % accelerator.num_processes == 0, "Batch size must be divisible by number of Acccelerate processes"
     cfg.vqvae.training.batch_size //= accelerator.num_processes
 
     exp_dir = setup_directory()
