@@ -61,7 +61,8 @@ def main(cfg: DictConfig):
     train_loader, test_loader = get_dataset(cfg)
 
     net, optim, train_loader, test_loader = accelerator.prepare(net, optim, train_loader, test_loader)
-    idx_history = []
+
+    idx_table = wandb_module.Table(columns=[f'codeword_{i:04}' for i in range(cfg.vqvae.model.codebook_size)])
 
     steps = 0
     max_steps = cfg.vqvae.training.max_steps
@@ -91,17 +92,18 @@ def main(cfg: DictConfig):
 
             if steps % cfg.vqvae.training.save_frequency == 0:
                 save_model(net, checkpoint_dir / f'state_dict_{steps:06}.pt')
-
-
+            
 
         if steps <= max_steps:
             metrics.print_summary(f"training {steps}/{max_steps}")
             if accelerator.is_main_process:
+                idx_table.add_data(*((total_idx / (idx.numel() * len(train_loader))).tolist()))
+
                 wandb.log({'train': metrics.summarise()}, commit=False)
                 wandb.log({'train': {'unused_codewords_proportion': 
                     (total_idx == 0).sum() / cfg.vqvae.model.codebook_size
                 }}, commit=False)
-                idx_history.append(total_idx / (idx.numel() * len(train_loader)))
+                wandb.log({'train': {'codebook_usage': idx_table}}, commit=False)
 
         metrics = MetricGroup('loss', 'mse_loss', 'kl_loss')
         net.eval()
@@ -129,16 +131,6 @@ def main(cfg: DictConfig):
                 (total_idx == 0).sum() / cfg.vqvae.model.codebook_size
             }}, commit=True)
         accelerator.wait_for_everyone()
-
-    if accelerator.is_main_process:
-        wandb.log({'codebook_usage':
-            wandb_module.plot.line_series(
-                xs=list(range(len(idx_history))),
-                ys=torch.stack(idx_history, dim=-1).numpy(),
-                keys=[f'codeword_{i:04}' for i in range(cfg.vqvae.model.codebook_size)],
-                xname="Epochs"
-            )
-        })
 
 
 if __name__ == '__main__':
