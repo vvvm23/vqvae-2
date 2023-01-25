@@ -4,37 +4,42 @@ import wandb
 import logging
 from accelerate.logging import get_logger
 from pathlib import Path
-from datetime import datetime 
+from datetime import datetime
 
 logger = get_logger(__file__)
+
 
 def get_parameter_count(net: torch.nn.Module) -> int:
     return sum(p.numel() for p in net.parameters() if p.requires_grad)
 
+
 def get_device(cpu):
-    if cpu or not torch.cuda.is_available(): 
-        return torch.device('cpu')
-    return torch.device('cuda')
+    if cpu or not torch.cuda.is_available():
+        return torch.device("cpu")
+    return torch.device("cuda")
+
 
 def init_wandb(cfg, root_dir):
-    if 'wandb' not in cfg:
-        return wandb.init(mode='disabled')
+    if "wandb" not in cfg:
+        return wandb.init(mode="disabled")
     return wandb.init(
-        entity = cfg.wandb.entity,
-        project = cfg.wandb.project,
-        dir = root_dir,
-        resume = 'auto',
+        entity=cfg.wandb.entity,
+        project=cfg.wandb.project,
+        dir=root_dir,
+        resume="auto",
     )
 
-def setup_directory(base='exp'):
+
+def setup_directory(base="exp"):
     root_dir = Path(base)
     root_dir.mkdir(exist_ok=True)
 
-    save_id = 'vqvae_' + str(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    save_id = "vqvae_" + str(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
-    exp_dir = (root_dir / save_id)
+    exp_dir = root_dir / save_id
     exp_dir.mkdir(exist_ok=True)
     return exp_dir
+
 
 class Metric:
     def __init__(self, name):
@@ -52,6 +57,7 @@ class Metric:
     def summarise(self):
         avg = self.total / self.steps
         return avg
+
 
 class MetricGroup:
     def __init__(self, *names):
@@ -72,8 +78,5 @@ class MetricGroup:
     def print_summary(self, header):
         summary = self.summarise()
 
-        msg = (
-            f"[{header}] " +
-            ', '.join(f"{n}: {v}" for n, v in summary.items())
-        )
+        msg = f"[{header}] " + ", ".join(f"{n}: {v}" for n, v in summary.items())
         logging.info(msg)

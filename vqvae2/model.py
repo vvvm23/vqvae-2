@@ -10,7 +10,8 @@ from .vq import VQLayer
 
 # Regular VQ-VAE without any hierarchical bits
 class VQVAE(HelperModule):
-    def build(self,
+    def build(
+        self,
         in_dim: int,
         hidden_dim: int,
         codebook_dim: int,
@@ -24,12 +25,12 @@ class VQVAE(HelperModule):
         residual_stride: int = 1,
         residual_padding: int = 1,
         residual_bias: bool = True,
-        resample_method: str = 'conv',
+        resample_method: str = "conv",
         resample_factor: int = 4,
         use_batch_norm: bool = True,
         use_rezero: bool = False,
         activation: nn.Module = nn.SiLU,
-        output_activation: nn.Module = nn.Identity
+        output_activation: nn.Module = nn.Identity,
     ):
         # TODO: store args that will be needed by higher level VQ-VAE-2
         # TODO: refactor arg passing a la lucidrains style
@@ -46,7 +47,7 @@ class VQVAE(HelperModule):
             residual_bias=residual_bias,
             use_batch_norm=use_batch_norm,
             use_rezero=use_rezero,
-            activation=activation
+            activation=activation,
         )
 
         self.codebook = VQLayer(
@@ -55,7 +56,7 @@ class VQVAE(HelperModule):
             codebook_size=codebook_size,
             decay=codebook_decay,
             eps=codebook_eps,
-            embedding_dtype=codebook_dtype
+            embedding_dtype=codebook_dtype,
         )
 
         # TODO: refactor args here too
@@ -72,7 +73,7 @@ class VQVAE(HelperModule):
             residual_bias=residual_bias,
             use_batch_norm=use_batch_norm,
             use_rezero=use_rezero,
-            activation=activation
+            activation=activation,
         )
 
         # TODO: parameterize?
@@ -97,10 +98,9 @@ class VQVAE(HelperModule):
         z, idx, diff = self.encode(x)
         return self.decode(z), idx, diff
 
+
 class VQVAE2(HelperModule):
-    def build(self,
-        vqvaes: Tuple[VQVAE]
-    ):
+    def build(self, vqvaes: Tuple[VQVAE]):
         self.num_levels = len(vqvaes)
         self.vqvaes = nn.ModuleList(*vqvaes)
 
@@ -125,7 +125,8 @@ class VQVAE2(HelperModule):
         zs, idx, diff = self.encode(x)
         return self.decode(zs), idx, diff
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     vqvae = VQVAE(3, 256, 256, 256, residual_dim=256)
     count = sum(p.numel() for p in vqvae.parameters() if p.requires_grad)
     print(f"Number of parameters: {count:,}")
