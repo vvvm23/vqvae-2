@@ -17,7 +17,7 @@ from torchvision.utils import save_image
 
 from tqdm import tqdm
 
-from vqvae2 import VQVAE
+from vqvae2 import VQVAE, VQVAE2
 from data import get_dataset
 from utils import init_wandb, MetricGroup, setup_directory
 
@@ -60,13 +60,13 @@ def main(cfg: DictConfig):
         mse_loss = F.mse_loss(recon, x)
         return mse_loss + diff * cfg.vqvae.training.beta, mse_loss, diff, recon, idx
 
-    net = VQVAE(**cfg.vqvae.model, activation=torch.nn.ReLU)
+    net = VQVAE2.build_from_config(cfg.vqvae.model)
     optim = torch.optim.AdamW(net.parameters(), lr=cfg.vqvae.training.lr)
     train_loader, test_loader = get_dataset(cfg)
 
     net, optim, train_loader, test_loader = accelerator.prepare(net, optim, train_loader, test_loader)
 
-    idx_table = wandb_module.Table(columns=[f"codeword_{i:04}" for i in range(cfg.vqvae.model.codebook_size)])
+    # idx_table = wandb_module.Table(columns=[f"codeword_{i:04}" for i in range(cfg.vqvae.model.codebook_size)])
 
     steps = 0
     max_steps = cfg.vqvae.training.max_steps
@@ -76,7 +76,7 @@ def main(cfg: DictConfig):
             it = tqdm(train_loader)
 
         metrics = MetricGroup("loss", "mse_loss", "kl_loss")
-        total_idx = torch.zeros(cfg.vqvae.model.codebook_size).cpu().long()
+        # total_idx = torch.zeros(cfg.vqvae.model.codebook_size).cpu().long()
         net.train()
         for batch in it:
             optim.zero_grad()
@@ -84,7 +84,7 @@ def main(cfg: DictConfig):
             accelerator.backward(loss)
             optim.step()
 
-            total_idx += torch.bincount(idx.cpu().detach().flatten(), minlength=cfg.vqvae.model.codebook_size)
+            # total_idx += torch.bincount(idx.cpu().detach().flatten(), minlength=cfg.vqvae.model.codebook_size)
 
             metrics.log(loss, *m)
 
@@ -100,23 +100,23 @@ def main(cfg: DictConfig):
         if steps <= max_steps:
             metrics.print_summary(f"training {steps}/{max_steps}")
             if accelerator.is_main_process:
-                idx_table.add_data(*((total_idx / (idx.numel() * len(train_loader))).tolist()))
+                # idx_table.add_data(*((total_idx / (idx.numel() * len(train_loader))).tolist()))
 
                 wandb.log({"train": metrics.summarise()}, commit=False)
-                wandb.log(
-                    {"train": {"unused_codewords_proportion": (total_idx == 0).sum() / cfg.vqvae.model.codebook_size}},
-                    commit=False,
-                )
-                wandb.log({"train": {"codebook_usage": idx_table}}, commit=False)
+                # wandb.log(
+                # {"train": {"unused_codewords_proportion": (total_idx == 0).sum() / cfg.vqvae.model.codebook_size}},
+                # commit=False,
+                # )
+                # wandb.log({"train": {"codebook_usage": idx_table}}, commit=False)
 
         metrics = MetricGroup("loss", "mse_loss", "kl_loss")
         net.eval()
         with torch.no_grad():
-            total_idx = torch.zeros(cfg.vqvae.model.codebook_size).cpu().long()
+            # total_idx = torch.zeros(cfg.vqvae.model.codebook_size).cpu().long()
             for batch in test_loader:
                 loss, *m, recon, idx = loss_fn(net, batch)
                 metrics.log(loss, *m)
-                total_idx += torch.bincount(idx.cpu().flatten(), minlength=cfg.vqvae.model.codebook_size)
+                # total_idx += torch.bincount(idx.cpu().flatten(), minlength=cfg.vqvae.model.codebook_size)
 
         metrics.print_summary(f"evaluation {steps}/{max_steps}")
 
@@ -135,10 +135,10 @@ def main(cfg: DictConfig):
                 commit=False,
             )
             wandb.log({"eval": metrics.summarise()}, commit=False)
-            wandb.log(
-                {"eval": {"unused_codewords_proportion": (total_idx == 0).sum() / cfg.vqvae.model.codebook_size}},
-                commit=True,
-            )
+            # wandb.log(
+            # {"eval": {"unused_codewords_proportion": (total_idx == 0).sum() / cfg.vqvae.model.codebook_size}},
+            # commit=True,
+            # )
         accelerator.wait_for_everyone()
 
 

@@ -102,14 +102,16 @@ class VQVAE2(HelperModule):
 
     @classmethod
     def build_from_config(cls, config):
-        vqvaes = []
-        in_dim = config.vqvae.pop("in_dim")
-        resample_factors = config.vqvae.pop("resample_factors")
-        for f in resample_factors:
-            vqvaes.append(VQVAE(in_dim=in_dim, **config.vqvae, resample_factor=f))
-            in_dim = config.vqvae.hidden_dim
+        config = dict(config)
+        return cls.build_from_kwargs(config.pop("resample_factors"), **config)
+        # vqvaes = []
+        # in_dim = config.pop("in_dim")
+        # resample_factors = config.pop("resample_factors")
+        # for f in resample_factors:
+        # vqvaes.append(VQVAE(in_dim=in_dim, **config, resample_factor=f))
+        # in_dim = config.hidden_dim
 
-        return cls(vqvaes)
+        # return cls(vqvaes)
 
     @classmethod
     def build_from_kwargs(cls, resample_factors: List[int] = None, **kwargs):

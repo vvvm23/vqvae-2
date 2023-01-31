@@ -5,7 +5,7 @@ model:
   codebook_size: 256
   num_residual_layers: 1
   residual_dim: 128
-  resample_factor: 4
+  resample_factors: [2, 2]
   use_batch_norm: true
   use_rezero: false
 

@@ -1,1 +1,1 @@
-from .model import VQVAE
+from .model import VQVAE, VQVAE2
