@@ -100,6 +100,28 @@ class VQVAE2(HelperModule):
         self.num_levels = len(vqvaes)
         self.vqvaes = nn.ModuleList(vqvaes)
 
+    @classmethod
+    def build_from_config(cls, config):
+        vqvaes = []
+        in_dim = config.vqvae.pop("in_dim")
+        resample_factors = config.vqvae.pop("resample_factors")
+        for f in resample_factors:
+            vqvaes.append(VQVAE(in_dim=in_dim, **config.vqvae, resample_factor=f))
+            in_dim = config.vqvae.hidden_dim
+
+        return cls(vqvaes)
+
+    @classmethod
+    def build_from_kwargs(cls, resample_factors: List[int] = None, **kwargs):
+        assert resample_factors is not None
+        vqvaes = []
+        in_dim = kwargs.pop("in_dim")
+        for f in resample_factors:
+            vqvaes.append(VQVAE(in_dim=in_dim, **kwargs, resample_factor=f))
+            in_dim = kwargs["hidden_dim"]
+
+        return cls(vqvaes)
+
     # TODO: currently limited to only two levels as we only cascade condition from next highest
     @staticmethod
     def _hierarchical_forward(vqvae, x, vqvaes: List):
@@ -134,22 +156,25 @@ class VQVAE2(HelperModule):
 
 if __name__ == "__main__":
     device = torch.device("cuda")
-    vqvae_bottom = VQVAE(
-        in_dim=3, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factor=4
-    ).to(device)
-    vqvae_top = VQVAE(
-        in_dim=128, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factor=2
-    ).to(device)
-    vqvae2 = VQVAE2((vqvae_bottom, vqvae_top)).to(device=device, dtype=torch.float16)
+    # vqvae_bottom = VQVAE(
+    # in_dim=3, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factor=4
+    # ).to(device)
+    # vqvae_top = VQVAE(
+    # in_dim=128, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factor=2
+    # ).to(device)
+    # vqvae2 = VQVAE2((vqvae_bottom, vqvae_top)).to(device=device, dtype=torch.float16)
+    vqvae2 = VQVAE2.build_from_kwargs(
+        in_dim=3, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factors=[4, 2]
+    ).to(device=device, dtype=torch.float16)
 
-    count = sum(p.numel() for p in vqvae_bottom.parameters() if p.requires_grad)
-    print(f"Number of parameters: {count:,}")
-    count = sum(p.numel() for p in vqvae_top.parameters() if p.requires_grad)
-    print(f"Number of parameters: {count:,}")
+    # count = sum(p.numel() for p in vqvae_bottom.parameters() if p.requires_grad)
+    # print(f"Number of parameters: {count:,}")
+    # count = sum(p.numel() for p in vqvae_top.parameters() if p.requires_grad)
+    # print(f"Number of parameters: {count:,}")
     count = sum(p.numel() for p in vqvae2.parameters() if p.requires_grad)
     print(f"Number of parameters: {count:,}")
 
-    x = torch.randn(128, 3, 256, 256).to(device=device, dtype=torch.float16)
+    x = torch.randn(4, 3, 256, 256).to(device=device, dtype=torch.float16)
     y, idx, diff = vqvae2(x)
 
     print(y.shape)
