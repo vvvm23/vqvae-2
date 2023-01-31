@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from typing import Tuple
+from typing import Tuple, List, Optional
 
 from .utils import HelperModule
 from .conv import ConvDown, ConvUp
@@ -86,54 +86,72 @@ class VQVAE(HelperModule):
         z = self.encoder(x)
         return self.codebook(z)
 
-    def decode(self, z):
-        z = self.decoder(z)
+    def decode(self, z, c: Optional[torch.FloatTensor] = None):
+        z = self.decoder(z, c)
         return self.out_conv(z)
 
-    def decode_discrete(self, idx):
+    def decode_discrete(self, idx, c: Optional[torch.FloatTensor] = None):
         z = F.embedding(idx, self.embeddings.T)
-        return self.decode(z)
-
-    def forward(self, x):
-        z, idx, diff = self.encode(x)
-        return self.decode(z), idx, diff
+        return self.decode(z, c)
 
 
 class VQVAE2(HelperModule):
     def build(self, vqvaes: Tuple[VQVAE]):
         self.num_levels = len(vqvaes)
-        self.vqvaes = nn.ModuleList(*vqvaes)
+        self.vqvaes = nn.ModuleList(vqvaes)
 
-    def encode(self, x):
-        zs, idx, total_diff = [], [], 0.0
-        z = x
-        for vqvae in self.vqvaes:
-            z, id, diff = vqvae.encode(z)
-            zs.append(z)
-            idx.append(id)
-            total_diff += diff
+    # TODO: currently limited to only two levels as we only cascade condition from next highest
+    @staticmethod
+    def _hierarchical_forward(vqvae, x, vqvaes: List):
+        z = vqvae.encoder.downsample(x)
+        c, idx, diff = 0.0, [], 0.0
+        if len(vqvaes):
+            c, idx, diff = VQVAE2._hierarchical_forward(vqvaes[0], z, vqvaes[1:])
+        # TODO: try concat conditioning later
+        z = vqvae.encoder.residual(z + c)
+        z, id, d = vqvae.codebook(z)
 
-        return zs, idx, diff
-
-    def decode(self, zs):
-        pass
-
-    def decode_discrete(self, x):
-        pass
+        z = vqvae.decode(z, c)
+        return z, [id, *idx], diff + d
 
     def forward(self, x):
-        zs, idx, diff = self.encode(x)
-        return self.decode(zs), idx, diff
+        """
+        vqvae[0].encoder.downsample
+            vqvae[1].encoder.downsample
+                vqvae[2].encoder.downsample
+                vqvae[2].encoder.resnet
+                vqvae[2].encoder.codebook
+                vqvae[2].decoder
+            vqvae[1].encoder.resnet
+            vqvae[1].encoder.codebook
+            vqvae[1].decoder
+        vqvae[0].encoder.resnet
+        vqvae[0].encoder.codebook
+        vqvae[0].decoder
+        """
+        return VQVAE2._hierarchical_forward(self.vqvaes[0], x, self.vqvaes[1:])
 
 
 if __name__ == "__main__":
-    vqvae = VQVAE(3, 256, 256, 256, residual_dim=256)
-    count = sum(p.numel() for p in vqvae.parameters() if p.requires_grad)
+    device = torch.device("cuda")
+    vqvae_bottom = VQVAE(
+        in_dim=3, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factor=4
+    ).to(device)
+    vqvae_top = VQVAE(
+        in_dim=128, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factor=2
+    ).to(device)
+    vqvae2 = VQVAE2((vqvae_bottom, vqvae_top)).to(device=device, dtype=torch.float16)
+
+    count = sum(p.numel() for p in vqvae_bottom.parameters() if p.requires_grad)
+    print(f"Number of parameters: {count:,}")
+    count = sum(p.numel() for p in vqvae_top.parameters() if p.requires_grad)
+    print(f"Number of parameters: {count:,}")
+    count = sum(p.numel() for p in vqvae2.parameters() if p.requires_grad)
     print(f"Number of parameters: {count:,}")
 
-    x = torch.randn(4, 3, 32, 32)
-    y, idx, diff = vqvae(x)
-    print(x.shape)
+    x = torch.randn(128, 3, 256, 256).to(device=device, dtype=torch.float16)
+    y, idx, diff = vqvae2(x)
+
     print(y.shape)
-    print(idx.shape)
+    print([i.shape for i in idx])
     print(diff)

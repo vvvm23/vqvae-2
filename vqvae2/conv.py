@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from math import log2
 
 from .utils import HelperModule
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 from functools import partial
 
 
@@ -113,9 +113,12 @@ class ConvDown(HelperModule):
             ]
         )
 
-    def forward(self, x):
+    def forward(self, x, c: Optional[torch.FloatTensor] = None):
         x = self.downsample(x)
-        return self.residual(x)
+        c = c if c is not None else 0.0
+
+        # TODO: for now just add, later we can try concat method
+        return self.residual(x + c)
 
 
 class ConvUp(HelperModule):
@@ -179,9 +182,12 @@ class ConvUp(HelperModule):
         else:
             raise ValueError(f"Unknown resample method '{resample_method}'!")
 
-    def forward(self, x):
+    def forward(self, x, c: Optional[torch.FloatTensor] = None):
+        c = c if c is not None else 0.0
         x = self.conv_in(x)
-        x = self.residual(x)
+
+        # TODO: for now just add, later we can try concat method
+        x = self.residual(x + c)
         return self.upsample(x)
 
 
