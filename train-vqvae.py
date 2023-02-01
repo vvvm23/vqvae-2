@@ -53,8 +53,8 @@ def main(cfg: DictConfig):
         wandb = init_wandb(cfg, exp_dir)
     accelerator.wait_for_everyone()
 
-    def loss_fn(net, batch, eval=False):
-        x, *_ = batch
+    @torch.cuda.amp.autocast(enabled=cfg.vqvae.training.amp)
+    def loss_fn(net, x, eval=False):
         recon, idx, diff = net(x)
         if eval:
             x, recon = accelerator.gather_for_metrics((x, recon))
@@ -86,6 +86,8 @@ def main(cfg: DictConfig):
         total_idx = [torch.zeros(cfg.vqvae.model.codebook_size).cpu().long() for _ in cfg.vqvae.model.resample_factors]
         net.train()
         for batch in it:
+            if isinstance(batch, tuple):
+                batch, *_ = batch
             optim.zero_grad()
             loss, *m, _, idx = loss_fn(net, batch)
             accelerator.backward(loss)
@@ -136,6 +138,8 @@ def main(cfg: DictConfig):
                 torch.zeros(cfg.vqvae.model.codebook_size).cpu().long() for _ in cfg.vqvae.model.resample_factors
             ]
             for batch in test_loader:
+                if isinstance(batch, tuple):
+                    batch, *_ = batch
                 loss, *m, recon, idx = loss_fn(net, batch)
                 metrics.log(loss, *m)
                 for i in range(len(idx)):
@@ -146,14 +150,14 @@ def main(cfg: DictConfig):
         if accelerator.is_main_process:
             wandb_log["eval"] = {}
             save_image(
-                torch.concat([batch[0], recon], axis=0),
+                torch.concat([batch, recon], axis=0),
                 recon_dir / f"recon_{steps:06}.png",
                 nrow=len(recon),
                 normalize=True,
             )
             wandb_log.update(
                 {
-                    "input": wandb_module.Image(batch[0], caption="Input Image"),
+                    "input": wandb_module.Image(batch, caption="Input Image"),
                     "recon": wandb_module.Image(recon, caption="Reconstruction"),
                 }
             )

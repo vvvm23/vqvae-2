@@ -1,0 +1,10 @@
+name: ffhq256
+height: 256
+width: 256
+channels: 3
+num_workers: 4
+
+preprocess:
+  vflip: false
+  hflip: true
+  normalise: null
