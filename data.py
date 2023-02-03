@@ -67,6 +67,12 @@ def get_dataset(cfg):
     elif cfg.data.name in ["ffhq1024", "ffhq256", "ffhq128"]:
         train_dataset = FFHQDataset(f"data/{cfg.data.name}", train=True, transform=train_transforms)
         test_dataset = FFHQDataset(f"data/{cfg.data.name}", train=False, transform=test_transforms)
+    elif cfg.data.name in ["lhq1024", "lhq256", "lhq128"]:  # https://github.com/universome/alis/blob/master/lhq.md
+        raise NotImplementedError
+    elif cfg.data.name in ["afhq512", "afhq256", "afhq128"]:  # https://paperswithcode.com/dataset/afhq
+        raise NotImplementedError
+    elif cfg.data.name in ["celeba1024", "celeba256", "celeba128"]:  # https://paperswithcode.com/dataset/celeba-hq
+        raise NotImplementedError
     else:
         logging.error(f"Unknown dataset {cfg.data.name}. Terminating")
         exit()
