@@ -10,9 +10,9 @@ model:
   use_rezero: false
 
 training:
-  amp: false
+  amp: true
   batch_size: 128
-  lr: 0.001
+  lr: 0.0004
   beta: 0.25
   max_steps: 30_000
   save_frequency: 5_000

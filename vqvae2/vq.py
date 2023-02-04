@@ -6,11 +6,16 @@ from einops import rearrange
 import accelerate
 
 from .utils import HelperModule
+from typing import Literal
 
 import logging
 from accelerate.logging import get_logger
 
 logger = get_logger(__file__)
+
+
+def l2norm(t: torch.Tensor):
+    return F.normalize(t, p=2, dim=-1)
 
 
 class VQLayer(HelperModule):
@@ -22,27 +27,45 @@ class VQLayer(HelperModule):
         decay: float = 0.99,
         eps: float = 1e-5,
         embedding_dtype: torch.dtype = torch.float32,
+        init_type: Literal["normal", "kaiming_uniform"] = "kaiming_uniform",
+        cosine: bool = True,
     ):
         self.embedding_dim = embedding_dim
         self.codebook_size = codebook_size
         self.decay = decay
         self.eps = eps
         self.conv_in = nn.Conv2d(in_dim, embedding_dim, 1)
+        self.cosine = cosine
 
-        # TODO: smarter init?
-        embeddings = torch.normal(mean=0.0, std=0.1, size=(embedding_dim, codebook_size)).to(embedding_dtype)
+        if init_type == "normal":
+            embeddings = torch.normal(mean=0.0, std=0.1, size=(embedding_dim, codebook_size)).to(embedding_dtype)
+        elif init_type == "kaiming_uniform":
+            embeddings = torch.empty((embedding_dim, codebook_size), dtype=embedding_dtype)
+            nn.init.kaiming_uniform_(embeddings)
+        else:
+            raise ValueError("unrecognised `init_type`")
+
+        if self.cosine:
+            embeddings = l2norm(embeddings)
+
         self.register_buffer("embeddings", embeddings)
         self.register_buffer("cluster_sizes", torch.zeros(codebook_size, dtype=torch.float32))
         self.register_buffer("embeddings_avg", embeddings.clone())
 
     # TODO: generally, check for efficiency and correctness
+    @torch.cuda.amp.autocast(enabled=False)
     def forward(self, x):
-        x = rearrange(self.conv_in(x), "N c h w -> N h w c")
+        dtype = x.dtype
+        x = rearrange(self.conv_in(x.float()), "N c h w -> N h w c")
         z = rearrange(x, "N h w c -> (N h w) c")
+        if self.cosine:
+            z = l2norm(z)
+
+        norm_embeddings = l2norm(self.embeddings) if self.cosine else self.embeddings
         cluster_distances = (
             z.pow(2).sum(dim=-1, keepdim=True)
-            - 2 * z @ self.embeddings
-            + self.embeddings.pow(2).sum(dim=0, keepdim=True)  # TODO: can this square be cached using reparam?
+            - 2 * z @ norm_embeddings
+            + norm_embeddings.pow(2).sum(dim=0, keepdim=True)  # TODO: can this square be cached using reparam?
         )
         _, embedding_idx = (-cluster_distances).max(dim=-1)
 
@@ -51,7 +74,7 @@ class VQLayer(HelperModule):
         )  # TODO: is onehot needed in eval mode?
 
         embedding_idx = embedding_idx.reshape(*x.shape[:-1])
-        q = F.embedding(embedding_idx, self.embeddings.T)
+        q = F.embedding(embedding_idx, norm_embeddings.T)
 
         if self.training:
             # TODO: adding the all reduce breaks things.. unsure why
@@ -63,6 +86,9 @@ class VQLayer(HelperModule):
             embedding_sum = z.T @ embedding_onehot
 
             self.cluster_sizes.data.mul_(self.decay).add_(embedding_onehot_sum, alpha=1 - self.decay)
+
+            if self.cosine:
+                embedding_sum = l2norm(embedding_sum)
             self.embeddings_avg.data.mul_(self.decay).add_(embedding_sum, alpha=1 - self.decay)
             n = self.cluster_sizes.sum()
             cluster_sizes = ((self.cluster_sizes + self.eps) / (n + self.codebook_size * self.eps) * n).unsqueeze(0)
@@ -72,7 +98,7 @@ class VQLayer(HelperModule):
         diff = (q.detach() - x).pow(2).mean()
         q = x + (q - x).detach()  # allows gradient flow through `x`
 
-        return rearrange(q, "N h w c -> N c h w"), embedding_idx, diff
+        return rearrange(q, "N h w c -> N c h w").to(dtype), embedding_idx, diff
 
 
 if __name__ == "__main__":

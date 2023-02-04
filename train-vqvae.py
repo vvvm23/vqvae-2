@@ -86,7 +86,7 @@ def main(cfg: DictConfig):
         total_idx = [torch.zeros(cfg.vqvae.model.codebook_size).cpu().long() for _ in cfg.vqvae.model.resample_factors]
         net.train()
         for batch in it:
-            if isinstance(batch, tuple):
+            if isinstance(batch, (list, tuple)):
                 batch, *_ = batch
             optim.zero_grad()
             loss, *m, _, idx = loss_fn(net, batch)
@@ -138,7 +138,7 @@ def main(cfg: DictConfig):
                 torch.zeros(cfg.vqvae.model.codebook_size).cpu().long() for _ in cfg.vqvae.model.resample_factors
             ]
             for batch in test_loader:
-                if isinstance(batch, tuple):
+                if isinstance(batch, (list, tuple)):
                     batch, *_ = batch
                 loss, *m, recon, idx = loss_fn(net, batch)
                 metrics.log(loss, *m)

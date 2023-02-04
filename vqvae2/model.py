@@ -104,14 +104,6 @@ class VQVAE2(HelperModule):
     def build_from_config(cls, config):
         config = dict(config)
         return cls.build_from_kwargs(config.pop("resample_factors"), **config)
-        # vqvaes = []
-        # in_dim = config.pop("in_dim")
-        # resample_factors = config.pop("resample_factors")
-        # for f in resample_factors:
-        # vqvaes.append(VQVAE(in_dim=in_dim, **config, resample_factor=f))
-        # in_dim = config.hidden_dim
-
-        # return cls(vqvaes)
 
     @classmethod
     def build_from_kwargs(cls, resample_factors: List[int] = None, **kwargs):
@@ -139,40 +131,15 @@ class VQVAE2(HelperModule):
         return z, [id, *idx], diff + d
 
     def forward(self, x):
-        """
-        vqvae[0].encoder.downsample
-            vqvae[1].encoder.downsample
-                vqvae[2].encoder.downsample
-                vqvae[2].encoder.resnet
-                vqvae[2].encoder.codebook
-                vqvae[2].decoder
-            vqvae[1].encoder.resnet
-            vqvae[1].encoder.codebook
-            vqvae[1].decoder
-        vqvae[0].encoder.resnet
-        vqvae[0].encoder.codebook
-        vqvae[0].decoder
-        """
         return VQVAE2._hierarchical_forward(self.vqvaes[0], x, self.vqvaes[1:])
 
 
 if __name__ == "__main__":
     device = torch.device("cuda")
-    # vqvae_bottom = VQVAE(
-    # in_dim=3, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factor=4
-    # ).to(device)
-    # vqvae_top = VQVAE(
-    # in_dim=128, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factor=2
-    # ).to(device)
-    # vqvae2 = VQVAE2((vqvae_bottom, vqvae_top)).to(device=device, dtype=torch.float16)
     vqvae2 = VQVAE2.build_from_kwargs(
         in_dim=3, hidden_dim=128, codebook_dim=64, codebook_size=512, residual_dim=128, resample_factors=[4, 2]
     ).to(device=device, dtype=torch.float16)
 
-    # count = sum(p.numel() for p in vqvae_bottom.parameters() if p.requires_grad)
-    # print(f"Number of parameters: {count:,}")
-    # count = sum(p.numel() for p in vqvae_top.parameters() if p.requires_grad)
-    # print(f"Number of parameters: {count:,}")
     count = sum(p.numel() for p in vqvae2.parameters() if p.requires_grad)
     print(f"Number of parameters: {count:,}")
 
