@@ -12,7 +12,7 @@ from functools import partial
 class Residual(HelperModule):
     def build(self, net: nn.Module, use_rezero: bool = False, rezero_init: float = 0.0):
         self.net = net
-        self.alpha = nn.Parameter(torch.FloatTensor(rezero_init)) if use_rezero else 1.0
+        self.alpha = nn.Parameter(torch.FloatTensor([rezero_init])) if use_rezero else 1.0
 
     def forward(self, x):
         return self.net(x) * self.alpha + x
