@@ -61,7 +61,9 @@ def main(cfg: DictConfig):
         mse_loss = F.mse_loss(recon, x)
         return mse_loss + diff * cfg.vqvae.training.beta, mse_loss, diff, recon, idx
 
-    net = VQVAE2.build_from_config(cfg.vqvae.model)
+    net = VQVAE2.build_from_config(
+        cfg.vqvae.model, codebook_gumbel_temperature=0.1, codebook_init_type="kaiming_uniform", codebook_cosine=True
+    )
     optim = torch.optim.AdamW(net.parameters(), lr=cfg.vqvae.training.lr)
     train_loader, test_loader = get_dataset(cfg)
 

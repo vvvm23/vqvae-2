@@ -18,6 +18,22 @@ def l2norm(t: torch.Tensor):
     return F.normalize(t, p=2, dim=-1)
 
 
+# https://github.com/lucidrains/vector-quantize-pytorch/blob/61b821d876249977be5c8b6f7fac710f860f05db/vector_quantize_pytorch/vector_quantize_pytorch.py
+def log(t, eps=1e-20):
+    return torch.log(t.clamp(min=eps))
+
+
+def gumbel_noise(t: torch.Tensor):
+    noise = torch.zeros_like(t).uniform_(0, 1)
+    return -log(-log(noise))
+
+
+def gumbel_sample(t: torch.Tensor, temperature: float = 0.0, dim=-1):
+    if temperature == 0.0:
+        return t.argmax(dim=dim)
+    return ((t / temperature) + gumbel_noise(t)).argmax(dim=dim)
+
+
 class VQLayer(HelperModule):
     def build(
         self,
@@ -29,6 +45,7 @@ class VQLayer(HelperModule):
         embedding_dtype: torch.dtype = torch.float32,
         init_type: Literal["normal", "kaiming_uniform"] = "kaiming_uniform",
         cosine: bool = True,
+        gumbel_temperature: float = 0.0,
     ):
         self.embedding_dim = embedding_dim
         self.codebook_size = codebook_size
@@ -36,6 +53,7 @@ class VQLayer(HelperModule):
         self.eps = eps
         self.conv_in = nn.Conv2d(in_dim, embedding_dim, 1)
         self.cosine = cosine
+        self.gumbel_temperature = gumbel_temperature
 
         if init_type == "normal":
             embeddings = torch.normal(mean=0.0, std=0.1, size=(embedding_dim, codebook_size)).to(embedding_dtype)
@@ -67,7 +85,8 @@ class VQLayer(HelperModule):
             - 2 * z @ norm_embeddings
             + norm_embeddings.pow(2).sum(dim=0, keepdim=True)  # TODO: can this square be cached using reparam?
         )
-        _, embedding_idx = (-cluster_distances).max(dim=-1)
+        # TODO: do we need to change this in eval mode?
+        embedding_idx = gumbel_sample(-cluster_distances, temperature=self.gumbel_temperature, dim=-1)
 
         embedding_onehot = F.one_hot(embedding_idx, self.codebook_size).to(
             z.dtype

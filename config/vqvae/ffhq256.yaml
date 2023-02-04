@@ -7,7 +7,7 @@ model:
   residual_dim: 64
   resample_factors: [4, 2]
   use_batch_norm: true
-  use_rezero: true
+  use_rezero: false
 
 training:
   amp: false

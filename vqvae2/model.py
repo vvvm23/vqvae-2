@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Literal
 
 from .utils import HelperModule
 from .conv import ConvDown, ConvUp
@@ -19,6 +19,9 @@ class VQVAE(HelperModule):
         codebook_decay: float = 0.99,
         codebook_eps: float = 1e-5,
         codebook_dtype: torch.dtype = torch.float32,
+        codebook_init_type: Literal["normal", "kaiming_uniform"] = "kaiming_uniform",
+        codebook_gumbel_temperature: float = 0.0,
+        codebook_cosine: bool = True,
         num_residual_layers: int = 2,
         residual_dim: int = 256,
         residual_kernel_size: int = 3,
@@ -57,6 +60,9 @@ class VQVAE(HelperModule):
             decay=codebook_decay,
             eps=codebook_eps,
             embedding_dtype=codebook_dtype,
+            init_type=codebook_init_type,
+            cosine=codebook_cosine,
+            gumbel_temperature=codebook_gumbel_temperature,
         )
 
         # TODO: refactor args here too
@@ -101,9 +107,9 @@ class VQVAE2(HelperModule):
         self.vqvaes = nn.ModuleList(vqvaes)
 
     @classmethod
-    def build_from_config(cls, config):
+    def build_from_config(cls, config, **kwargs):
         config = dict(config)
-        return cls.build_from_kwargs(config.pop("resample_factors"), **config)
+        return cls.build_from_kwargs(config.pop("resample_factors"), **config, **kwargs)
 
     @classmethod
     def build_from_kwargs(cls, resample_factors: List[int] = None, **kwargs):
