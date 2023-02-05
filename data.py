@@ -20,7 +20,7 @@ class FFHQDataset(torch.utils.data.Dataset):
             root = Path(root)
 
         assert root.is_dir()
-        paths = list(root.glob("*.png"))
+        paths = list(root.glob("**/*.png"))
 
         if train:
             self.paths = paths[: FFHQDataset.TRAIN_SPLIT_SIZE]
@@ -70,7 +70,8 @@ def get_dataset(cfg):
     elif cfg.data.name in ["lhq1024", "lhq256", "lhq128"]:  # https://github.com/universome/alis/blob/master/lhq.md
         raise NotImplementedError
     elif cfg.data.name in ["afhq512", "afhq256", "afhq128"]:  # https://paperswithcode.com/dataset/afhq
-        raise NotImplementedError
+        train_dataset = FFHQDataset(f"data/{cfg.data.name}", train=True, transform=train_transforms)
+        test_dataset = FFHQDataset(f"data/{cfg.data.name}", train=False, transform=test_transforms)
     elif cfg.data.name in ["celeba1024", "celeba256", "celeba128"]:  # https://paperswithcode.com/dataset/celeba-hq
         raise NotImplementedError
     else:
