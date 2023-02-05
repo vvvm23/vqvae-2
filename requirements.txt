@@ -6,3 +6,4 @@ torch==1.13.1
 torchvision==0.14.1
 tqdm==4.64.1
 wandb==0.13.9
+x_transformers==1.8.1
