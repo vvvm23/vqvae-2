@@ -12,6 +12,21 @@ from accelerate.logging import get_logger
 logger = get_logger(__file__)
 
 
+class LatentDataset(torch.utils.data.Dataset):
+    def __init__(self, root: Union[str, Path], train: bool = True):
+        if isinstance(root, str):
+            root = Path(root)
+        root = root / ("train" if train else "eval")
+        assert root.is_dir()
+        self.paths = list(root.glob("**/*.npy"))
+
+    def __len__(self):
+        return len(self.paths)
+
+    def __getitem__(self, idx):
+        return torch.from_numpy(np.load(self.paths[idx])).long()
+
+
 class FFHQDataset(torch.utils.data.Dataset):
     TRAIN_SPLIT_SIZE = 65_000
 

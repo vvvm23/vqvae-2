@@ -1,8 +1,8 @@
 model:
   in_dim: 3
   hidden_dim: 128
-  codebook_dim: 8
-  codebook_size: 256
+  codebook_dim: 64
+  codebook_size: 512
   num_residual_layers: 2
   residual_dim: 64
   resample_factors: [4, 2]
@@ -11,8 +11,8 @@ model:
 
 training:
   amp: false
-  batch_size: 64
+  batch_size: 128
   lr: 0.0004
   beta: 0.25
   max_steps: 30_000
-  save_frequency: 5_000
+  save_frequency: 1_000
