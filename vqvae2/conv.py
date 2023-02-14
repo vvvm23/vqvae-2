@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from math import log2
 
 from .utils import HelperModule
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, List, Iterable
 from functools import partial
 
 
@@ -136,6 +136,8 @@ class ConvUp(HelperModule):
         residual_bias: bool = True,
         use_batch_norm: bool = True,
         use_rezero: bool = False,
+        conditioning_resample_factors: Optional[List[int]] = None,
+        post_concat_kernel_size: int = 5,
         activation: nn.Module = nn.SiLU,
     ):
         assert log2(resample_factor).is_integer(), f"Downsample factor must be a power of 2! Got '{resample_factor}'"
@@ -159,10 +161,12 @@ class ConvUp(HelperModule):
             ]
         )
 
+        conditioning_resample_factors = conditioning_resample_factors if conditioning_resample_factors else []
         if resample_method == "auto":
             resample_method = "conv"  # interpolate probably isn't good, so just make 'auto' be conv on upsample
 
         if resample_method == "conv":
+            self.conditioning_upsamplers = nn.ModuleList()
             self.upsample = nn.Sequential(
                 *[
                     nn.Sequential(
@@ -173,21 +177,55 @@ class ConvUp(HelperModule):
                     for _ in range(int(log2(resample_factor)))
                 ]
             )
-        elif resample_method == "interpolate":
-            self.upsample = partial(
-                F.interpolate,
-                scale_factor=(resample_factor, resample_factor),
-                mode="bilinear",
-            )
+            for f in conditioning_resample_factors:
+                self.conditioning_upsamplers.append(
+                    *[
+                        nn.Sequential(
+                            nn.ConvTranspose2d(hidden_dim if i else in_dim, hidden_dim, 4, stride=2, padding=1),
+                            nn.BatchNorm2d(hidden_dim) if use_batch_norm else nn.Identity(),
+                            activation(),
+                        )
+                        for i in range(int(log2(f)))
+                    ]
+                )
+
+        # elif resample_method == "interpolate":
+        #     self.conditioning_upsamplers = [] if len(conditioning_resample_factors) else None
+        #     self.upsample = partial(
+        #         F.interpolate,
+        #         scale_factor=(resample_factor, resample_factor),
+        #         mode="bilinear",
+        #     )
+        #     for f in conditioning_resample_factors:
+        #         self.conditioning_upsamplers.append(
+        #             partial(
+        #                 F.interpolate,
+        #                 scale_factor=(resample_factor, resample_factor),
+        #                 mode="bilinear",
+        #             )
+        #         )
         else:
             raise ValueError(f"Unknown resample method '{resample_method}'!")
 
-    def forward(self, x, c: Optional[torch.FloatTensor] = None):
-        c = c if c is not None else 0.0
-        x = self.conv_in(x)
+        self.conditioning_post_concat = nn.Identity()
+        if self.conditioning_upsamplers:
+            self.conditioning_post_concat = nn.Sequential(
+                nn.Conv2d(3 * hidden_dim, hidden_dim, post_concat_kernel_size, stride=1, padding="same"),
+                nn.BatchNorm2d(hidden_dim) if use_batch_norm else nn.Identity(),
+                activation(),
+            )
 
-        # TODO: for now just add, later we can try concat method
-        x = self.residual(x + c)
+    def forward(self, x, cs: Optional[Iterable[torch.FloatTensor]] = None):
+        assert bool(cs) == bool(self.conditioning_upsamplers)
+        assert len(cs) == len(self.conditioning_upsamplers)
+        cs = cs if cs else []
+        x = self.conv_in(x)
+        if cs:
+            cs = [f(c) for f, c in zip(self.conditioning_upsamplers, cs)]
+        x = torch.cat([x, *cs], dim=1)
+        x = self.conditioning_post_concat(x)
+
+        x = self.residual(x)
         return self.upsample(x)
 
 
