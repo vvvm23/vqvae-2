@@ -179,14 +179,16 @@ class ConvUp(HelperModule):
             )
             for f in conditioning_resample_factors:
                 self.conditioning_upsamplers.append(
-                    *[
-                        nn.Sequential(
-                            nn.ConvTranspose2d(hidden_dim if i else in_dim, hidden_dim, 4, stride=2, padding=1),
-                            nn.BatchNorm2d(hidden_dim) if use_batch_norm else nn.Identity(),
-                            activation(),
-                        )
-                        for i in range(int(log2(f)))
-                    ]
+                    nn.Sequential(
+                        *[
+                            nn.Sequential(
+                                nn.ConvTranspose2d(hidden_dim if i else in_dim, hidden_dim, 4, stride=2, padding=1),
+                                nn.BatchNorm2d(hidden_dim) if use_batch_norm else nn.Identity(),
+                                activation(),
+                            )
+                            for i in range(int(log2(f)))
+                        ]
+                    )
                 )
 
         # elif resample_method == "interpolate":
@@ -210,7 +212,13 @@ class ConvUp(HelperModule):
         self.conditioning_post_concat = nn.Identity()
         if self.conditioning_upsamplers:
             self.conditioning_post_concat = nn.Sequential(
-                nn.Conv2d(3 * hidden_dim, hidden_dim, post_concat_kernel_size, stride=1, padding="same"),
+                nn.Conv2d(
+                    (1 + len(conditioning_resample_factors)) * hidden_dim,
+                    hidden_dim,
+                    post_concat_kernel_size,
+                    stride=1,
+                    padding="same",
+                ),
                 nn.BatchNorm2d(hidden_dim) if use_batch_norm else nn.Identity(),
                 activation(),
             )
@@ -222,6 +230,7 @@ class ConvUp(HelperModule):
         x = self.conv_in(x)
         if cs:
             cs = [f(c) for f, c in zip(self.conditioning_upsamplers, cs)]
+        print(x.shape, [c.shape for c in cs])
         x = torch.cat([x, *cs], dim=1)
         x = self.conditioning_post_concat(x)
 
