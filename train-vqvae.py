@@ -55,7 +55,7 @@ def main(cfg: DictConfig):
 
     @torch.cuda.amp.autocast(enabled=cfg.vqvae.training.amp)
     def loss_fn(net, x, eval=False):
-        recon, idx, diff = net(x)
+        recon, _, idx, diff = net(x)
         if eval:
             x, recon = accelerator.gather_for_metrics((x, recon))
         mse_loss = F.mse_loss(recon, x)

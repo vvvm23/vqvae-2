@@ -230,7 +230,6 @@ class ConvUp(HelperModule):
         x = self.conv_in(x)
         if cs:
             cs = [f(c) for f, c in zip(self.conditioning_upsamplers, cs)]
-        print(x.shape, [c.shape for c in cs])
         x = torch.cat([x, *cs], dim=1)
         x = self.conditioning_post_concat(x)
 

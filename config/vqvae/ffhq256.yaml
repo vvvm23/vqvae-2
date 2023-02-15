@@ -5,13 +5,13 @@ model:
   codebook_size: 512
   num_residual_layers: 2
   residual_dim: 64
-  resample_factors: [4, 2]
+  resample_factors: [4, 2, 2]
   use_batch_norm: true
   use_rezero: false
 
 training:
   amp: false
-  batch_size: 128
+  batch_size: 32
   lr: 0.0004
   beta: 0.25
   max_steps: 30_000
